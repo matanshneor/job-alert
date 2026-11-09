@@ -66,4 +66,4 @@ ai:
   score_effort: medium
   max_evaluations_per_run: 40        # the rest wait for the next run
   max_description_chars: 60000       # safety cap; real postings are far shorter
-  min_score_to_alert: 0              # 0 = alert on everything that passes the gap rules
+  min_score_to_alert: 40             # jobs that pass the gap rules but score below this are not sent (0 = send all)
