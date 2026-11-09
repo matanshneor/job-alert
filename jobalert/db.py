@@ -160,12 +160,18 @@ class Database:
 
     # ---------- alerts ----------
 
-    def pending_alerts(self, limit: int) -> list[dict[str, Any]]:
+    def pending_alerts(self, limit: int, require_evaluation: bool) -> list[dict[str, Any]]:
+        """Jobs waiting for an alert, best score first. With AI on, only evaluated jobs are sent."""
+        join = "join" if require_evaluation else "left join"
         return self.conn.execute(
-            """
-            select id, source, company, title, location, url, fingerprint, raw->>'workplace_type' as workplace_type
-            from jobs where notify_status = 'pending' and status = 'open'
-            order by first_seen_at, id limit %s
+            f"""
+            select j.id, j.source, j.company, j.title, j.location, j.url, j.fingerprint,
+                   j.raw->>'workplace_type' as workplace_type,
+                   e.score, e.decision, e.reason_he, e.gaps_he
+            from jobs j {join} evaluations e on e.job_id = j.id
+            where j.notify_status = 'pending' and j.status = 'open'
+            order by e.score desc nulls last, j.first_seen_at, j.id
+            limit %s
             """,
             (limit,),
         ).fetchall()
@@ -230,3 +236,110 @@ class Database:
 
     def set_notify_status(self, job_id: int, status: str) -> None:
         self.conn.execute("update jobs set notify_status = %s where id = %s", (status, job_id))
+
+    # ---------- AI evaluation ----------
+
+    def jobs_to_evaluate(self, notify_status: str, limit: int) -> list[dict[str, Any]]:
+        """Open jobs in the given notify_status that have no evaluation yet, oldest first."""
+        return self.conn.execute(
+            """
+            select j.id, j.source, j.company, j.title, j.location, j.description, j.fingerprint
+            from jobs j left join evaluations e on e.job_id = j.id
+            where j.notify_status = %s and j.status = 'open' and e.id is null
+            order by j.first_seen_at, j.id limit %s
+            """,
+            (notify_status, limit),
+        ).fetchall()
+
+    def count_to_evaluate(self, notify_status: str) -> int:
+        return self.conn.execute(
+            """
+            select count(*) as n from jobs j left join evaluations e on e.job_id = j.id
+            where j.notify_status = %s and j.status = 'open' and e.id is null
+            """,
+            (notify_status,),
+        ).fetchone()["n"]
+
+    def is_cross_source_duplicate(self, fingerprint: str, source: str) -> bool:
+        """Already alerted from a different source (so there's no need to spend AI on it)."""
+        return self.conn.execute(
+            """
+            select 1 from alerts a join jobs j on j.id = a.job_id
+            where a.fingerprint = %s and j.source <> %s limit 1
+            """,
+            (fingerprint, source),
+        ).fetchone() is not None
+
+    def save_evaluation(self, job_id: int, ev: Any, new_notify_status: str | None) -> None:
+        with self.conn.transaction():
+            self.conn.execute(
+                """
+                insert into evaluations (job_id, decision, reject_reason, requirements, score, rubric,
+                                         reason_he, gaps_he, models)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                on conflict (job_id) do update set
+                  decision = excluded.decision, reject_reason = excluded.reject_reason,
+                  requirements = excluded.requirements, score = excluded.score, rubric = excluded.rubric,
+                  reason_he = excluded.reason_he, gaps_he = excluded.gaps_he, models = excluded.models,
+                  created_at = now()
+                """,
+                (job_id, ev.decision, ev.reject_reason, Jsonb(ev.requirements), ev.score,
+                 Jsonb(ev.rubric) if ev.rubric is not None else None, ev.reason_he, ev.gaps_he,
+                 Jsonb(ev.models)),
+            )
+            if new_notify_status:
+                self.set_notify_status(job_id, new_notify_status)
+
+    def baseline_summary(self) -> list[dict[str, Any]]:
+        return self.conn.execute(
+            """
+            select e.decision,
+                   count(*) as n,
+                   count(*) filter (where e.score >= 70) as s70,
+                   count(*) filter (where e.score >= 50 and e.score < 70) as s50,
+                   count(*) filter (where e.score < 50) as below50
+            from jobs j join evaluations e on e.job_id = j.id
+            where j.notify_status = 'baseline' and j.status = 'open'
+            group by e.decision order by e.decision
+            """
+        ).fetchall()
+
+    def release_baseline(self, min_score: int) -> tuple[int, int]:
+        """Evaluated baseline jobs: relevant ones with score >= min_score become pending (alerted
+        on the next runs, best first); the rest become skipped. Returns (released, skipped)."""
+        with self.conn.transaction():
+            released = self.conn.execute(
+                """
+                update jobs j set notify_status = 'pending'
+                from evaluations e
+                where e.job_id = j.id and j.notify_status = 'baseline' and j.status = 'open'
+                  and e.decision in ('alert', 'borderline') and coalesce(e.score, 100) >= %s
+                """,
+                (min_score,),
+            ).rowcount
+            skipped = self.conn.execute(
+                """
+                update jobs j set notify_status = 'skipped'
+                from evaluations e
+                where e.job_id = j.id and j.notify_status = 'baseline' and j.status = 'open'
+                """
+            ).rowcount
+        return released, skipped
+
+    # ---------- profile ----------
+
+    def get_profile(self) -> dict[str, Any] | None:
+        return self.conn.execute(
+            "select profile_yaml, cv_text, updated_at from profile where key = 'default'"
+        ).fetchone()
+
+    def set_profile(self, profile_yaml: str, cv_text: str) -> None:
+        self.conn.execute(
+            """
+            insert into profile (key, profile_yaml, cv_text) values ('default', %s, %s)
+            on conflict (key) do update set profile_yaml = excluded.profile_yaml,
+              cv_text = excluded.cv_text, updated_at = now()
+            """,
+            (profile_yaml, cv_text),
+        )
+

@@ -14,6 +14,9 @@ import sys
 import time
 from typing import Any
 
+from .ai.evaluate import evaluate_job
+from .ai.llm import LLM, TransientAIError
+from .ai.profile import load_db_profile
 from .collectors.registry import get_collector_class
 from .config import CompanyConfig, Settings, load_companies, load_settings, require_env
 from .db import Database
@@ -142,17 +145,64 @@ def collect_company(
             "baseline": first_time}
 
 
-def send_pending_alerts(db: Database, tg: TelegramClient, limit: int) -> int:
-    # Phase 2 will insert the AI filter + score step here, before alerting.
+def evaluate_pending(db: Database, tg: TelegramClient, settings: Settings) -> dict[str, Any]:
+    """Run the AI filter + score on new jobs. Rejected or low-score jobs are marked skipped."""
+    ai = settings.ai
+    stats = {"evaluated": 0, "rejected": 0, "below_min_score": 0, "duplicates": 0, "waiting": 0}
+    rows = db.jobs_to_evaluate("pending", ai["max_evaluations_per_run"])
+    if not rows:
+        return stats
+    try:
+        profile = load_db_profile(db)
+        llm = LLM(require_env("ANTHROPIC_API_KEY"))
+        for row in rows:
+            if db.is_cross_source_duplicate(row["fingerprint"], row["source"]):
+                db.set_notify_status(row["id"], "skipped")
+                stats["duplicates"] += 1
+                continue
+            ev = evaluate_job(llm, profile, row, ai)
+            new_status = None
+            if ev.decision == "reject":
+                new_status = "skipped"
+                stats["rejected"] += 1
+            elif ev.score is not None and ev.score < ai.get("min_score_to_alert", 0):
+                new_status = "skipped"
+                stats["below_min_score"] += 1
+            db.save_evaluation(row["id"], ev, new_status)
+            stats["evaluated"] += 1
+            log.info("AI: %s / %s -> %s %s", row["company"], row["title"], ev.decision,
+                     ev.score if ev.score is not None else ev.reject_reason or "")
+    except TransientAIError as exc:
+        # Temporary API trouble: the remaining jobs stay pending and are retried next run.
+        log.warning("AI temporarily unavailable: %s", exc)
+        stats["error"] = str(exc)[:300]
+    except Exception as exc:  # noqa: BLE001 - e.g. missing key / profile / bad request
+        log.exception("AI evaluation failed")
+        stats["error"] = f"{type(exc).__name__}: {exc}"[:300]
+    if "error" in stats:
+        failures = db.record_source_failure("ai:evaluate", stats["error"], {})
+        if failures == settings.closing["warn_after_failures"]:
+            tg.send_message(f"⚠️ שלב ה-AI נכשל {failures} ריצות ברצף. משרות חדשות ממתינות.\n"
+                            f"<code>{html.escape(stats['error'])}</code>")
+    else:
+        db.record_source_success("ai:evaluate", stats["evaluated"], {})
+    stats["waiting"] = db.count_to_evaluate("pending")
+    return stats
+
+
+def send_pending_alerts(db: Database, tg: TelegramClient, limit: int, require_evaluation: bool) -> int:
     sent = 0
-    for row in db.pending_alerts(limit):
-        alert_id = db.claim_alert(row["id"], row["source"], row["fingerprint"])
+    for row in db.pending_alerts(limit, require_evaluation):
+        borderline = row.get("decision") == "borderline"
+        alert_id = db.claim_alert(row["id"], row["source"], row["fingerprint"], borderline)
         if alert_id is None:
             log.info("Skipping duplicate: %s / %s", row["company"], row["title"])
             continue
         content = AlertContent(
             job_id=row["id"], company=row["company"], title=row["title"],
             location=row["location"], workplace_type=row["workplace_type"], url=row["url"],
+            score=row.get("score"), borderline=borderline, borderline_gaps=row.get("gaps_he"),
+            reason_he=row.get("reason_he"),
         )
         try:
             message_id, text = tg.send_alert(content)
@@ -203,7 +253,10 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
             tg.send_message(summary)
         if sample_alerts:
             send_samples(db, tg, sample_alerts)
-        sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"])
+        ai_on = bool(settings.ai.get("enabled"))
+        if ai_on:
+            stats["_ai"] = evaluate_pending(db, tg, settings)
+        sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"], require_evaluation=ai_on)
         waiting = db.pending_count()
         stats["_alerts"] = {"sent": sent, "still_pending": waiting}
         stats["_seconds"] = round(time.monotonic() - started, 1)

@@ -57,3 +57,13 @@ closing:
   missed_runs_to_close: 2     # a job must be missing in 2 successful runs in a row
   min_previous_count: 5       # if a source suddenly returns 0 jobs but had more than this, don't close anything
   warn_after_failures: 3      # Telegram warning when a source fails this many runs in a row
+
+ai:
+  enabled: true
+  filter_model: claude-haiku-5-5     # extracts requirements and maps them to the profile
+  score_model: claude-sonnet-5-5     # scores 0-100 with the fixed rubric, writes the Hebrew reason
+  filter_effort: medium
+  score_effort: medium
+  max_evaluations_per_run: 40        # the rest wait for the next run
+  max_description_chars: 60000       # safety cap; real postings are far shorter
+  min_score_to_alert: 0              # 0 = alert on everything that passes the gap rules

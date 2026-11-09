@@ -36,6 +36,7 @@ class Settings:
     location: dict[str, Any]
     alerts: dict[str, Any]
     closing: dict[str, Any]
+    ai: dict[str, Any]
 
 
 def load_companies(path: Path | None = None) -> list[CompanyConfig]:
@@ -67,6 +68,7 @@ def load_settings(path: Path | None = None) -> Settings:
         location=data["location"],
         alerts=data["alerts"],
         closing=data["closing"],
+        ai=data.get("ai") or {"enabled": False},
     )
 
 
