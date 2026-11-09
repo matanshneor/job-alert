@@ -1,0 +1,102 @@
+# Companies to watch.
+#
+# To add a company: add an entry with its ATS ("applicant tracking system") and params.
+# Supported ATS types so far: ashby, comeet, lever.
+# Coming in phase 4: workday, greenhouse, smartrecruiters.
+#
+# Fields:
+#   slug     - short stable id, used in job keys. Never change it after the first run.
+#   name     - display name in alerts.
+#   aliases  - other spellings of the company name (used to match the same job from emails).
+#   ats      - which collector to use.
+#   params   - collector-specific settings (see each collector file in src/jobalert/collectors/).
+#   enabled  - set to false to pause a company without deleting it.
+
+companies:
+  - slug: monday
+    name: monday.com
+    aliases: [monday, monday.com, mondaycom, monday com]
+    ats: ashby
+    params:
+      board: monday.com          # https://jobs.ashbyhq.com/monday.com
+
+  - slug: upwind
+    name: Upwind
+    aliases: [upwind, upwind security]
+    ats: comeet
+    params:
+      comeet_slug: upwind        # https://www.comeet.com/jobs/upwind/49.004
+      company_uid: "49.004"
+
+  - slug: mobileye
+    name: Mobileye
+    aliases: [mobileye]
+    ats: lever
+    params:
+      site: mobileye             # https://jobs.eu.lever.co/mobileye
+      region: eu
+
+  - slug: zim
+    name: ZIM
+    aliases: [zim, zim integrated shipping services, zim integrated shipping]
+    ats: comeet
+    params:
+      comeet_slug: zim           # https://www.comeet.com/jobs/zim/72.008
+      company_uid: "72.008"
+
+  - slug: moonactive
+    name: Moon Active
+    aliases: [moon active, moonactive]
+    ats: ashby
+    params:
+      board: moonactive          # https://jobs.ashbyhq.com/moonactive
+
+  # ---- Phase 4 (verified endpoints, collectors not built yet) ----
+  - slug: nvidia
+    name: NVIDIA
+    aliases: [nvidia]
+    ats: workday
+    enabled: false
+    params:
+      host: nvidia.wd5.myworkdayjobs.com
+      tenant: nvidia
+      site: NVIDIAExternalCareerSite
+      facets: {locationHierarchy1: ["2fcb99c455831013ea52bbe14cf9326c"]}   # Israel
+
+  - slug: intel
+    name: Intel
+    aliases: [intel, intel corporation]
+    ats: workday
+    enabled: false
+    params:
+      host: intel.wd1.myworkdayjobs.com
+      tenant: intel
+      site: External
+      facets:
+        locations:   # Israel sites: Haifa, Jerusalem, Kiryat-Gat, Petah-Tikva
+          - 1e4a4eb3adf1013563ba9174bf817fcd
+          - 1e4a4eb3adf101f41cd29774bf8184cd
+          - 1e4a4eb3adf101cb242c9e74bf8189cd
+          - 1e4a4eb3adf101aaeda8a474bf818ecd
+
+  - slug: wix
+    name: Wix
+    aliases: [wix, wix.com, wixcom]
+    ats: smartrecruiters
+    enabled: false
+    params:
+      company_id: Wix2
+      country: il
+
+  - slug: playtika
+    name: Playtika
+    aliases: [playtika]
+    ats: greenhouse
+    enabled: false
+    params:
+      board: playtikaltd
+
+# Ideas for later (ATS still to be checked):
+# Check Point, CyberArk, Amdocs, NICE, Elbit, Fiverr, Payoneer, AppsFlyer, Taboola,
+# Bank Hapoalim, Bank Leumi, Discount, Mizrahi-Tefahot.
+# Google, Microsoft, Apple: covered by email alerts (phase 3), not scraped.

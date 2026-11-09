@@ -1,0 +1,59 @@
+http:
+  user_agent: "personal-job-alert/1.0 (hourly check, low volume)"
+  min_delay_seconds: 1.5      # wait at least this long between requests to the same host
+  timeout_seconds: 30
+  retries: 3                  # retried only on network errors, 429 and 5xx (never on 403)
+
+location:
+  # A job passes if any of its locations is in one of these countries...
+  countries: [IL]
+  # ...or any of its location texts mentions one of these words.
+  israel_keywords:
+    - israel
+    - tel aviv
+    - tel-aviv
+    - jerusalem
+    - haifa
+    - herzliya
+    - herzelia
+    - ramat gan
+    - ramat-gan
+    - petah tikva
+    - petah-tikva
+    - petach tikva
+    - raanana
+    - ra'anana
+    - yokneam
+    - beer sheva
+    - be'er sheva
+    - netanya
+    - rehovot
+    - hod hasharon
+    - kfar saba
+    - rosh haayin
+    - rosh ha'ayin
+    - caesarea
+    - airport city
+    - modiin
+    - kiryat gat
+    - kiryat-gat
+    - tel hai
+    - or yehuda
+    - bnei brak
+    - givatayim
+    - holon
+    - rishon lezion
+    - lod
+    - matam
+  # Remote jobs pass only if their location text is open to Israel.
+  # A remote job with no region at all (just "Remote") also passes.
+  remote_ok_keywords: [israel, emea, worldwide, anywhere, global]
+
+alerts:
+  max_per_run: 25             # extra pending alerts wait for the next run (nothing is lost)
+  telegram_delay_seconds: 1.1 # Telegram allows about 1 message per second per chat
+
+closing:
+  missed_runs_to_close: 2     # a job must be missing in 2 successful runs in a row
+  min_previous_count: 5       # if a source suddenly returns 0 jobs but had more than this, don't close anything
+  warn_after_failures: 3      # Telegram warning when a source fails this many runs in a row

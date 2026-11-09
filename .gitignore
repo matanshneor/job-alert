@@ -1,0 +1,22 @@
+# Secrets: never commit
+.env
+.env.*
+!.env.example
+
+# CV files and anything personal stay out of git (stored in Supabase Storage)
+cv/
+*.docx
+*.pdf
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+build/
+
+# OS / editor
+.DS_Store
+.vscode/
+.ruff_cache/

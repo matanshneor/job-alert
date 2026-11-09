@@ -1,0 +1,158 @@
+[
+ {
+  "name": "AI Engineer",
+  "department": "Research",
+  "email": "upwind.5C.375@comeetapply.com",
+  "email_alias": null,
+  "url_comeet_hosted_page": "https://www.comeet.com/jobs/upwind/49.004/ai-engineer/5C.375",
+  "url_recruit_hosted_page": "https://www.comeet.com/jobs/upwind/49.004/ai-engineer/5C.375",
+  "url_active_page": "https://www.upwind.io/careers/co/tel-aviv/5C.375/ai-engineer/all",
+  "employment_type": "Full-time",
+  "experience_level": "Intermediate",
+  "uid": "5C.375",
+  "location": {
+   "name": "Tel Aviv",
+   "country": "IL",
+   "city": "Ramat Gan",
+   "state": "Tel Aviv District",
+   "postal_code": "",
+   "street_name": "13 Menachem Begin",
+   "arrival_instructions": "<p><span>ICON Tower, 24 - 25 Floor</span><span></span></p><p>For parking : <span>Please use the building’s parking lot (entrance on the right, Level -4). Take a parking ticket upon entry.</span></p><p></p>",
+   "street_number": "13",
+   "timezone": "Asia/Jerusalem",
+   "location_uid": "E6.404",
+   "is_remote": true
+  },
+  "internal_use_custom_id": null,
+  "is_consent_needed": false,
+  "is_sms_consent_needed": false,
+  "referrals_reward": null,
+  "is_reward": false,
+  "is_company_reward": true,
+  "company_referrals_reward": "$2000",
+  "url_detected_page": "https://www.upwind.io/careers/co/tel-aviv/5C.375/ai-engineer/all",
+  "picture_url": null,
+  "time_updated": "2026-11-09T14:12:06Z",
+  "company_name": "Upwind Security",
+  "is_internal": false,
+  "linkedin_job_posting_id": null,
+  "workplace_type": "Hybrid",
+  "position_url": "https://www.comeet.co/careers-api/2.0/company/49.004/positions/5C.375?token=FIXTURETOKEN",
+  "details": [
+   {
+    "name": "Description",
+    "value": "<p class=\"editor-paragraph\"><span style=\"white-space: pre-wrap;\">Upwind is a next-generation Cloud Security Platform that uses runtime context to identify and prioritize critical risks. Unlike traditional tools, Upwind uses runtime data to prioritize risk and inform posture, so teams can focus on what truly matters. Our eBPF-powered sensors and agentless cloud discovery deliver real-time threat pr",
+    "order": 1
+   },
+   {
+    "name": "Requirements",
+    "value": "<ul class=\"editor-list-ul\"><li value=\"1\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">3+ years building AI/ML systems in production, including LLM-based agents built with modern AI and agent frameworks.</span></li><li value=\"2\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">Strong backend engineering skills and proficiency in Python.</span></li><li value=\"3\" class=\"ed",
+    "order": 2
+   }
+  ]
+ },
+ {
+  "name": "AI Engineering Lead",
+  "department": "Engineering",
+  "email": "upwind.4C.C69@comeetapply.com",
+  "email_alias": null,
+  "url_comeet_hosted_page": "https://www.comeet.com/jobs/upwind/49.004/ai-engineering-lead/4C.C69",
+  "url_recruit_hosted_page": "https://www.comeet.com/jobs/upwind/49.004/ai-engineering-lead/4C.C69",
+  "url_active_page": "https://www.upwind.io/careers/co/tel-aviv/4C.C69/ai-engineering-lead/all",
+  "employment_type": "Full-time",
+  "experience_level": null,
+  "uid": "4C.C69",
+  "location": {
+   "name": "Tel Aviv",
+   "country": "IL",
+   "city": "Ramat Gan",
+   "state": "Tel Aviv District",
+   "postal_code": "",
+   "street_name": "13 Menachem Begin",
+   "arrival_instructions": "<p><span>ICON Tower, 24 - 25 Floor</span><span></span></p><p>For parking : <span>Please use the building’s parking lot (entrance on the right, Level -4). Take a parking ticket upon entry.</span></p><p></p>",
+   "street_number": "13",
+   "timezone": "Asia/Jerusalem",
+   "location_uid": "E6.404",
+   "is_remote": true
+  },
+  "internal_use_custom_id": null,
+  "is_consent_needed": false,
+  "is_sms_consent_needed": false,
+  "referrals_reward": null,
+  "is_reward": false,
+  "is_company_reward": true,
+  "company_referrals_reward": "$2000",
+  "url_detected_page": "https://www.upwind.io/careers/co/tel-aviv/4C.C69/ai-engineering-lead/all",
+  "picture_url": null,
+  "time_updated": "2026-11-08T13:41:45Z",
+  "company_name": "Upwind Security",
+  "is_internal": false,
+  "linkedin_job_posting_id": null,
+  "workplace_type": "Hybrid",
+  "position_url": "https://www.comeet.co/careers-api/2.0/company/49.004/positions/4C.C69?token=FIXTURETOKEN",
+  "details": [
+   {
+    "name": "Description",
+    "value": "<p class=\"editor-paragraph\"><span style=\"white-space: pre-wrap;\">Upwind is a next-generation Cloud Security Platform that leverages runtime context to identify and prioritize critical risks, providing precise insights and efficient cloud security management. Unlike traditional tools, Upwind uses runtime data proactively for risk prioritization and posture insights, ensuring teams focus on what tru",
+    "order": 1
+   },
+   {
+    "name": "Requirements",
+    "value": "<ul class=\"editor-list-ul\"><li value=\"1\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">Strong engineering experience, with a track record of owning and delivering complex technical systems.</span></li><li value=\"2\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">Hands-on experience building </span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">LLM-po",
+    "order": 2
+   }
+  ]
+ },
+ {
+  "name": "Customer Success Manager (US Remote)",
+  "department": "Customer Success",
+  "email": "upwind.E9.264@comeetapply.com",
+  "email_alias": null,
+  "url_comeet_hosted_page": "https://www.comeet.com/jobs/upwind/49.004/customer-success-manager-us-remote/E9.264",
+  "url_recruit_hosted_page": "https://www.comeet.com/jobs/upwind/49.004/customer-success-manager-us-remote/E9.264",
+  "url_active_page": "https://www.upwind.io/careers/co/us-remote/E9.264/customer-success-manager-us-remote/all",
+  "employment_type": "Full-time",
+  "experience_level": null,
+  "uid": "E9.264",
+  "location": {
+   "name": "US (Remote)",
+   "country": "US",
+   "city": "San Francisco",
+   "state": "CA",
+   "postal_code": "94105",
+   "street_name": "140 New Montgomery Street",
+   "arrival_instructions": null,
+   "street_number": "140",
+   "timezone": "America/Los_Angeles",
+   "location_uid": "65.50A",
+   "is_remote": true
+  },
+  "internal_use_custom_id": null,
+  "is_consent_needed": false,
+  "is_sms_consent_needed": false,
+  "referrals_reward": null,
+  "is_reward": false,
+  "is_company_reward": true,
+  "company_referrals_reward": "$2000",
+  "url_detected_page": "https://www.upwind.io/careers/co/us-remote/E9.264/customer-success-manager-us-remote/all",
+  "picture_url": null,
+  "time_updated": "2026-11-09T15:00:15Z",
+  "company_name": "Upwind Security",
+  "is_internal": false,
+  "linkedin_job_posting_id": null,
+  "workplace_type": "Remote",
+  "position_url": "https://www.comeet.co/careers-api/2.0/company/49.004/positions/E9.264?token=FIXTURETOKEN",
+  "details": [
+   {
+    "name": "Description",
+    "value": "<p class=\"editor-paragraph\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">About The Position</strong></b></p><p class=\"editor-paragraph\"><span style=\"white-space: pre-wrap;\">Upwind is a next-generation Cloud Security Platform that leverages runtime context to identify and prioritize critical risks, providing precise insights and efficient cloud security management. Unlike trad",
+    "order": 1
+   },
+   {
+    "name": "Requirements",
+    "value": "<ul class=\"editor-list-ul\"><li value=\"1\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">3-5+ years in Customer Success, Account Management, or similar client-facing roles in SaaS or cybersecurity.</span></li><li value=\"2\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">Strong understanding of cloud security programs, modern security org structures, and value-driven succe",
+    "order": 2
+   }
+  ]
+ }
+]

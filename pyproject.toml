@@ -1,0 +1,25 @@
+[project]
+name = "jobalert"
+version = "0.1.0"
+description = "Personal hourly job-alert tool: career pages + job-alert emails -> Telegram"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "httpx>=0.28.1",
+    "psycopg[binary]>=3.3.8",
+    "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.uv]
+# Flat layout, run from the project root: "python -m jobalert.run". Not installed as a package.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
