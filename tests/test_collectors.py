@@ -238,3 +238,10 @@ def test_only_center_and_jerusalem(settings):
     assert loc.passes(job("רמת השרון, דן , ישראל"))
     assert loc.passes(job("Jerusalem District, Israel"))
     assert loc.excluded(job("Beer Sheva")) and not loc.excluded(job("רחובות"))
+
+
+def test_ashdod_is_in_the_area(settings):
+    from jobalert.models import Job
+    loc = LocationFilter(settings.location)
+    for place in ("Ashdod", "אשדוד, דרום, ישראל"):
+        assert loc.passes(Job("x", "c", "C", "1", "t", "u", location=place, country="IL", all_locations=[place]))

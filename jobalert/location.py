@@ -27,7 +27,17 @@ class LocationFilter:
         specific = [t for t in self._texts(job) if not _is_generic(t)]
         if not specific or not self.exclude_keywords:
             return False
-        return all(any(_matches(k, t) for k in self.exclude_keywords) for t in specific)
+        return all(self._text_excluded(t) for t in specific)
+
+    def _text_excluded(self, text: str) -> bool:
+        # A named place (e.g. "haifa") excludes the text. A region word ("=דרום") excludes it only
+        # when no other place is named: "אשדוד, דרום, ישראל" is kept if Ashdod isn't excluded.
+        places = [k for k in self.exclude_keywords if not k.startswith("=")]
+        if any(_matches(k, text) for k in places):
+            return True
+        regions = {k[1:] for k in self.exclude_keywords if k.startswith("=")}
+        parts = [p.strip() for p in re.split(r"[,|/;]", text) if p.strip() and not _is_generic(p)]
+        return bool(parts) and all(p in regions for p in parts)
 
     def passes(self, job: Job) -> bool:
         if self.excluded(job):
