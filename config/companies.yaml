@@ -2,8 +2,7 @@
 #
 # To add a company: add an entry with its ATS ("applicant tracking system") and params.
 # Supported ATS types so far: ashby, comeet, lever, greenhouse, eightfold, workday, oracle_hcm,
-# and mizrahi (a parser for that one bank's careers page).
-# Coming in phase 4: smartrecruiters.
+# smartrecruiters, and mizrahi (a parser for that one bank's careers page).
 #
 # Fields:
 #   slug     - short stable id, used in job keys. Never change it after the first run.
@@ -166,9 +165,8 @@ companies:
     name: Wix
     aliases: [wix, wix.com, wixcom]
     ats: smartrecruiters
-    enabled: false
     params:
-      company_id: Wix2
+      company_id: Wix2           # https://jobs.smartrecruiters.com/Wix2
       country: il
 
 # Checked and NOT added (Nov 2026):

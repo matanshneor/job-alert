@@ -1,0 +1,37 @@
+{
+ "offset": 0,
+ "limit": 100,
+ "totalFound": 2,
+ "content": [
+  {
+   "id": "111",
+   "name": "Backend Developer ",
+   "releasedDate": "2026-11-10T12:28:40.027Z",
+   "location": {
+    "city": "Tel Aviv",
+    "country": "il",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Tel Aviv, , Israel"
+   },
+   "function": {
+    "label": "Engineering"
+   },
+   "experienceLevel": {
+    "label": "Mid-Senior Level"
+   }
+  },
+  {
+   "id": "222",
+   "name": "Customer Care Expert",
+   "releasedDate": "2026-11-09T10:00:00Z",
+   "location": {
+    "city": "Be'er Sheva",
+    "country": "il",
+    "remote": false,
+    "hybrid": false,
+    "fullLocation": "Be'er Sheva, , Israel"
+   }
+  }
+ ]
+}

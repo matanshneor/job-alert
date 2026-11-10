@@ -37,7 +37,7 @@ Flags: `--only monday,upwind`, `--sample-alerts 3` (send test alerts from stored
 | Workday | `jobalert/collectors/workday.py` | Palo Alto Networks (incl. CyberArk), NVIDIA, Intel |
 | Oracle Recruiting Cloud | `jobalert/collectors/oracle_hcm.py` | Bank Discount |
 | Careers page (HTML) | `jobalert/collectors/mizrahi.py` | Mizrahi-Tefahot |
-| SmartRecruiters | phase 4 | Wix |
+| SmartRecruiters | `jobalert/collectors/smartrecruiters.py` | Wix |
 
 ## Deploy (Railway)
 

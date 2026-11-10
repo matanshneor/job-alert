@@ -9,6 +9,7 @@ from .greenhouse import GreenhouseCollector
 from .lever import LeverCollector
 from .mizrahi import MizrahiCollector
 from .oracle_hcm import OracleHcmCollector
+from .smartrecruiters import SmartRecruitersCollector
 from .workday import WorkdayCollector
 
 COLLECTORS: dict[str, type[Collector]] = {
@@ -20,6 +21,7 @@ COLLECTORS: dict[str, type[Collector]] = {
     "workday": WorkdayCollector,
     "oracle_hcm": OracleHcmCollector,
     "mizrahi": MizrahiCollector,
+    "smartrecruiters": SmartRecruitersCollector,
 }
 
 

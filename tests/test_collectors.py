@@ -8,6 +8,7 @@ from jobalert.collectors.greenhouse import GreenhouseCollector
 from jobalert.collectors.lever import LeverCollector
 from jobalert.collectors.mizrahi import MizrahiCollector
 from jobalert.collectors.oracle_hcm import OracleHcmCollector
+from jobalert.collectors.smartrecruiters import SmartRecruitersCollector
 from jobalert.collectors.workday import WorkdayCollector
 from jobalert.config import CompanyConfig
 from jobalert.location import LocationFilter
@@ -25,6 +26,7 @@ PANW = CompanyConfig("paloalto", "Palo Alto Networks", "workday", {
 DISCOUNT = CompanyConfig("discount", "Bank Discount", "oracle_hcm",
                          {"host": "ehsb.fa.em2.oraclecloud.com", "site_number": "CX_3001"})
 MIZRAHI = CompanyConfig("mizrahi", "Mizrahi-Tefahot", "mizrahi", {})
+WIX = CompanyConfig("wix", "Wix", "smartrecruiters", {"company_id": "Wix2", "country": "il"})
 UPWIND = CompanyConfig("upwind", "Upwind", "comeet", {"comeet_slug": "upwind", "company_uid": "49.004"})
 
 
@@ -195,3 +197,22 @@ def test_mizrahi_fails_loudly_when_layout_changes():
     http = FakeHttp({"open-jobs/": "<html><body>new design</body></html>"})
     with pytest.raises(RuntimeError):
         MizrahiCollector(MIZRAHI, http, {}).list_jobs()
+
+
+def test_smartrecruiters_parses_and_fetches_details(settings):
+    http = FakeHttp({
+        "postings/111": load_fixture("smartrecruiters_wix_details.json"),
+        "companies/Wix2/postings": load_fixture("smartrecruiters_wix.json"),
+    })
+    col = SmartRecruitersCollector(WIX, http, {})
+    jobs = col.list_jobs()
+    assert len(http.calls) == 1                      # totalFound 2 < page size
+    dev, care = jobs
+    assert dev.job_key == "smartrecruiters:wix:111" and dev.title == "Backend Developer"
+    assert dev.country == "IL" and dev.workplace_type == "hybrid" and care.workplace_type == "onsite"
+    loc = LocationFilter(settings.location)
+    assert all(loc.passes(j) for j in jobs)
+    col.fetch_details(dev)
+    assert "Build APIs" in dev.description and "Node.js" in dev.description
+    assert "About Wix" not in dev.description        # boilerplate company text is skipped
+    assert dev.url == "https://jobs.smartrecruiters.com/Wix2/111"   # stable, same as in the listing
