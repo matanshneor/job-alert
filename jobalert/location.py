@@ -1,6 +1,7 @@
-"""Location filter: Israel, plus remote jobs that are open to Israel."""
+"""Location filter: Israel (Center + Jerusalem only), plus remote jobs that are open to Israel."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .models import Job
@@ -11,12 +12,29 @@ class LocationFilter:
         self.countries = {c.upper() for c in cfg.get("countries", [])}
         self.israel_keywords = [k.lower() for k in cfg.get("israel_keywords", [])]
         self.remote_ok_keywords = [k.lower() for k in cfg.get("remote_ok_keywords", [])]
+        self.exclude_keywords = [k.lower() for k in cfg.get("exclude_keywords", [])]
 
     def _texts(self, job: Job) -> list[str]:
         texts = [job.location or "", *job.all_locations]
         return [t.lower() for t in texts if t]
 
+    def excluded(self, job: Job) -> bool:
+        """True when every specific location of the job is outside the wanted area.
+
+        Generic texts ("Israel", "ישראל", "IL") say nothing about the area and are ignored,
+        so a job listing only "Israel" is kept, and a job in Haifa *or* Tel Aviv is kept.
+        """
+        specific = [t for t in self._texts(job) if not _is_generic(t)]
+        if not specific or not self.exclude_keywords:
+            return False
+        return all(any(_matches(k, t) for k in self.exclude_keywords) for t in specific)
+
     def passes(self, job: Job) -> bool:
+        if self.excluded(job):
+            return False
+        return self._in_israel_or_open_remote(job)
+
+    def _in_israel_or_open_remote(self, job: Job) -> bool:
         countries = {c.upper() for c in [job.country or "", *job.all_countries] if c}
         if countries & self.countries:
             return True
@@ -31,3 +49,18 @@ class LocationFilter:
             if not countries and all(s == "" for s in stripped):
                 return True
         return False
+
+
+_GENERIC = re.compile(r"^(israel|ישראל|il|remote|hybrid|\d+ locations?)$")
+
+
+def _is_generic(text: str) -> bool:
+    t = re.sub(r"[\s,()\-–]+", " ", text).strip()
+    return not t or bool(_GENERIC.match(t))
+
+
+def _matches(keyword: str, text: str) -> bool:
+    """Whole-word match. A keyword starting with "=" must equal a whole comma-separated part."""
+    if keyword.startswith("="):
+        return keyword[1:] in {part.strip() for part in re.split(r"[,|/;]", text)}
+    return re.search(rf"(?<!\w){re.escape(keyword)}(?!\w)", text) is not None

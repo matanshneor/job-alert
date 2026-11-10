@@ -1,7 +1,8 @@
 """Phase 3: read job-alert emails (LinkedIn, Jobify) and store their jobs.
 
 Email jobs differ from company-board jobs:
-- no location filter (the alert itself is already set to the user's area),
+- only the area exclusion of the location filter (the alerts are already set to Israel, and
+  Jobify writes city names in Hebrew, so the "is it in Israel" check is skipped),
 - no AI evaluation (the emails have no description), they are alerted as-is,
 - never closed (there is no listing to compare against),
 - still deduplicated: the same job from a company board and from an email is alerted once.
@@ -15,6 +16,7 @@ from typing import Any, Callable, Protocol
 
 from ..config import CompanyConfig, Settings, require_env
 from ..dedup import build_alias_map, canonical_company, fingerprint
+from ..location import LocationFilter
 from ..models import Job
 from ..text import html_to_text
 from .imap import GmailReader, MailMessage
@@ -74,6 +76,7 @@ def collect_email_source(
 ) -> dict[str, Any]:
     key, name = src["key"], src["name"]
     parser = PARSERS[src["parser"]]
+    loc = LocationFilter(settings.location)
     state = db.get_source_state(key) or {}
     meta = dict(state.get("meta") or {})
     # The first run stores what is already in the inbox without alerting (like company boards).
@@ -96,7 +99,8 @@ def collect_email_source(
             log.warning("%s: %s (%s)", key, exc, msg.subject[:80])
             unreadable.append(msg.subject)
             continue
-        rows.extend(to_job(key, ej, alias_map) for ej in found)
+        jobs = [to_job(key, ej, alias_map) for ej in found]
+        rows.extend((j, fp) for j, fp in jobs if not loc.excluded(j))
         processed.append((gmail_id, key, msg.subject[:300], msg.received_at, len(found)))
 
     new = db.upsert_jobs(rows, "baseline" if first_time else "pending")

@@ -48,6 +48,75 @@ location:
   # Remote jobs pass only if their location text is open to Israel.
   # A remote job with no region at all (just "Remote") also passes.
   remote_ok_keywords: [israel, emea, worldwide, anywhere, global]
+  # Only Center (incl. Sharon/Shfela) and Jerusalem. A job is dropped when every specific location
+  # it lists is in one of these places (North, Haifa and South districts). Generic "Israel" alone is kept.
+  # Applies to email jobs too.
+  exclude_keywords:
+    # North + Haifa district
+    - haifa
+    - חיפה
+    - nesher
+    - נשר
+    - yokneam
+    - יקנעם
+    - matam
+    - מת"ם
+    - tel hai
+    - תל חי
+    - caesarea
+    - קיסריה
+    - hadera
+    - חדרה
+    - zichron
+    - זכרון
+    - karmiel
+    - כרמיאל
+    - nazareth
+    - נצרת
+    - afula
+    - עפולה
+    - tiberias
+    - טבריה
+    - kiryat shmona
+    - קריית שמונה
+    - nahariya
+    - נהריה
+    - acre
+    - akko
+    - עכו
+    - migdal haemek
+    - מגדל העמק
+    - northern district
+    - north district
+    - haifa district
+    - "=צפון"                # "=": only a whole location part, so "צפון תל אביב" is kept
+    # South
+    - eilat
+    - אילת
+    - beer sheva
+    - be'er sheva
+    - beersheba
+    - באר שבע
+    - kiryat gat
+    - kiryat-gat
+    - קריית גת
+    - ashdod
+    - אשדוד
+    - ashkelon
+    - אשקלון
+    - sderot
+    - שדרות
+    - dimona
+    - דימונה
+    - arad
+    - ערד
+    - ofakim
+    - אופקים
+    - netivot
+    - נתיבות
+    - southern district
+    - south district
+    - "=דרום"
 
 alerts:
   max_per_run: 25             # extra pending alerts wait for the next run (nothing is lost)

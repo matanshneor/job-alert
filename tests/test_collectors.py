@@ -211,8 +211,30 @@ def test_smartrecruiters_parses_and_fetches_details(settings):
     assert dev.job_key == "smartrecruiters:wix:111" and dev.title == "Backend Developer"
     assert dev.country == "IL" and dev.workplace_type == "hybrid" and care.workplace_type == "onsite"
     loc = LocationFilter(settings.location)
-    assert all(loc.passes(j) for j in jobs)
+    assert loc.passes(dev) and not loc.passes(care)   # Tel Aviv kept, Be'er Sheva outside the area
     col.fetch_details(dev)
     assert "Build APIs" in dev.description and "Node.js" in dev.description
     assert "About Wix" not in dev.description        # boilerplate company text is skipped
     assert dev.url == "https://jobs.smartrecruiters.com/Wix2/111"   # stable, same as in the listing
+
+
+def test_only_center_and_jerusalem(settings):
+    from jobalert.models import Job
+    loc = LocationFilter(settings.location)
+
+    def job(location, all_locations=()):
+        return Job("x", "c", "C", "1", "t", "u", location=location, country="IL", all_locations=list(all_locations))
+
+    assert not loc.passes(job("אילת, דרום, ישראל", ["אילת, דרום, ישראל"]))
+    assert not loc.passes(job("IL-Haifa", ["IL-Haifa", "Haifa"]))
+    assert not loc.passes(job("ישראל", ["ישראל", "נשר, חיפה, ישראל"]))      # generic "Israel" ignored
+    assert not loc.passes(job("Israel, Yokneam"))
+    assert not loc.passes(job("צפון", ["צפון"]))
+    assert loc.passes(job("Tel Aviv", ["Tel Aviv", "Israel"]))
+    assert loc.passes(job("ישראל", ["ישראל", "ירושלים, ישראל"]))
+    assert loc.passes(job("Israel"))                                       # unknown area: keep
+    assert loc.passes(job("Herzliya", ["Haifa", "Herzliya"]))              # one location in the area is enough
+    assert loc.passes(job("צפון תל אביב"))
+    assert loc.passes(job("רמת השרון, דן , ישראל"))
+    assert loc.passes(job("Jerusalem District, Israel"))
+    assert loc.excluded(job("Beer Sheva")) and not loc.excluded(job("רחובות"))
