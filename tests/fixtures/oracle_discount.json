@@ -1,0 +1,33 @@
+{
+ "items": [
+  {
+   "TotalJobsCount": 2,
+   "requisitionList": [
+    {
+     "Id": "5794",
+     "Title": "בנקאי/ת שירות סניף רמת השרון",
+     "PostedDate": "2026-11-10",
+     "PrimaryLocation": "רמת השרון, דן , ישראל",
+     "PrimaryLocationCountry": "IL",
+     "WorkplaceTypeCode": null,
+     "ShortDescriptionStr": "ניהול הקשר עם הלקוחות",
+     "secondaryLocations": []
+    },
+    {
+     "Id": "5800",
+     "Title": "Data Analyst",
+     "PostedDate": "2026-11-09",
+     "PrimaryLocation": "תל אביב, ישראל",
+     "PrimaryLocationCountry": "IL",
+     "WorkplaceTypeCode": "ORA_HYBRID",
+     "ShortDescriptionStr": "",
+     "secondaryLocations": [
+      {
+       "Name": "ירושלים, ישראל"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

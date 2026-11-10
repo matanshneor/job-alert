@@ -30,9 +30,14 @@ Flags: `--only monday,upwind`, `--sample-alerts 3` (send test alerts from stored
 | ATS | Collector | Companies |
 |---|---|---|
 | Ashby | `jobalert/collectors/ashby.py` | monday.com, Moon Active |
-| Comeet | `jobalert/collectors/comeet.py` | Upwind, ZIM |
+| Comeet | `jobalert/collectors/comeet.py` | Upwind, ZIM, Fiverr |
 | Lever (EU) | `jobalert/collectors/lever.py` | Mobileye |
-| Workday / SmartRecruiters / Greenhouse | phase 4 | NVIDIA, Intel / Wix / Playtika |
+| Greenhouse | `jobalert/collectors/greenhouse.py` | AppsFlyer, Taboola, Payoneer, NICE, Playtika |
+| Eightfold | `jobalert/collectors/eightfold.py` | Amdocs |
+| Workday | `jobalert/collectors/workday.py` | Palo Alto Networks (incl. CyberArk), NVIDIA, Intel |
+| Oracle Recruiting Cloud | `jobalert/collectors/oracle_hcm.py` | Bank Discount |
+| Careers page (HTML) | `jobalert/collectors/mizrahi.py` | Mizrahi-Tefahot |
+| SmartRecruiters | `jobalert/collectors/smartrecruiters.py` | Wix |
 
 ## Deploy (Railway)
 

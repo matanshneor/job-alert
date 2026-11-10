@@ -1,0 +1,21 @@
+{
+ "status": 200,
+ "data": {
+  "count": 3,
+  "positions": [
+   {
+    "id": 3,
+    "name": "Remote Architect",
+    "locations": [
+     "Remote"
+    ],
+    "standardizedLocations": [],
+    "postedTs": 1792405496,
+    "workLocationOption": "remote",
+    "department": null,
+    "displayJobId": "3",
+    "positionUrl": "/careers/job/3"
+   }
+  ]
+ }
+}

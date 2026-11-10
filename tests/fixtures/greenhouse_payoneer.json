@@ -1,0 +1,56 @@
+{
+ "jobs": [
+  {
+   "id": 101,
+   "title": "Backend Engineer ",
+   "absolute_url": "https://www.payoneer.com/careers/position/101/?gh_jid=101",
+   "location": {
+    "name": "Herzliya, Tel Aviv District, Israel"
+   },
+   "offices": [
+    {
+     "name": "Israel-Glilot",
+     "location": "Ramat HaSharon, Tel Aviv District, Israel"
+    }
+   ],
+   "content": "&lt;p&gt;&lt;strong&gt;Requirements&lt;/strong&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Python&lt;/li&gt;&lt;/ul&gt;",
+   "first_published": "2026-11-09T07:31:36-05:00",
+   "departments": [
+    {
+     "name": "R&D"
+    }
+   ]
+  },
+  {
+   "id": 102,
+   "title": "Account Executive",
+   "absolute_url": "https://x/102",
+   "location": {
+    "name": "USA - Remote"
+   },
+   "offices": [],
+   "content": "",
+   "updated_at": "2026-11-01T00:00:00Z",
+   "departments": []
+  },
+  {
+   "id": 103,
+   "title": "Sales Manager",
+   "absolute_url": "https://x/103",
+   "location": {
+    "name": "London, UK"
+   },
+   "offices": [
+    {
+     "name": "London",
+     "location": null
+    }
+   ],
+   "content": "&lt;p&gt;x&lt;/p&gt;",
+   "departments": []
+  }
+ ],
+ "meta": {
+  "total": 3
+ }
+}

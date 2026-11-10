@@ -1,0 +1,24 @@
+{
+ "id": "111",
+ "postingUrl": "https://jobs.smartrecruiters.com/Wix2/111-backend-developer",
+ "jobAd": {
+  "sections": {
+   "companyDescription": {
+    "title": "Company Description",
+    "text": "<p>About Wix</p>"
+   },
+   "jobDescription": {
+    "title": "Job Description",
+    "text": "<p>Build APIs</p>"
+   },
+   "qualifications": {
+    "title": "Qualifications",
+    "text": "<ul><li>Node.js</li></ul>"
+   },
+   "additionalInformation": {
+    "title": "Additional Information",
+    "text": ""
+   }
+  }
+ }
+}

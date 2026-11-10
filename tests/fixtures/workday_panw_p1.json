@@ -1,0 +1,17 @@
+{
+ "total": 3,
+ "jobPostings": [
+  {
+   "title": "Senior Backend Engineer (Cortex)",
+   "externalPath": "/job/Office---Israel---Tel-Aviv/Senior-Backend-Engineer--Cortex-_JR-1",
+   "locationsText": "Office - Israel - Tel Aviv",
+   "timeType": "Full time"
+  },
+  {
+   "title": "Security Researcher",
+   "externalPath": "/job/Office---Israel---Petach-Tikva/Security-Researcher_JR-2",
+   "locationsText": "2 Locations",
+   "timeType": "Full time"
+  }
+ ]
+}

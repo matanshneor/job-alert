@@ -1,0 +1,38 @@
+{
+ "status": 200,
+ "data": {
+  "count": 3,
+  "positions": [
+   {
+    "id": 1,
+    "name": "Data Engineer",
+    "locations": [
+     "Israel- RAANANA (Amdocs Site)"
+    ],
+    "standardizedLocations": [
+     "Ra'anana, Center District, IL"
+    ],
+    "postedTs": 1792405496,
+    "workLocationOption": "hybrid",
+    "department": null,
+    "displayJobId": "1",
+    "positionUrl": "/careers/job/1"
+   },
+   {
+    "id": 2,
+    "name": "Support Engineer",
+    "locations": [
+     "Cyprus- Limassol (Amdocs Site)"
+    ],
+    "standardizedLocations": [
+     "Limassol, Cyprus, CY"
+    ],
+    "postedTs": 1792405496,
+    "workLocationOption": "onsite",
+    "department": null,
+    "displayJobId": "2",
+    "positionUrl": "/careers/job/2"
+   }
+  ]
+ }
+}
