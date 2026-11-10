@@ -1,8 +1,8 @@
 # Companies to watch.
 #
 # To add a company: add an entry with its ATS ("applicant tracking system") and params.
-# Supported ATS types so far: ashby, comeet, lever.
-# Coming in phase 4: workday, greenhouse, smartrecruiters.
+# Supported ATS types so far: ashby, comeet, lever, greenhouse, eightfold.
+# Coming in phase 4: workday, smartrecruiters.
 #
 # Fields:
 #   slug     - short stable id, used in job keys. Never change it after the first run.
@@ -51,6 +51,58 @@ companies:
     params:
       board: moonactive          # https://jobs.ashbyhq.com/moonactive
 
+  - slug: fiverr
+    name: Fiverr
+    aliases: [fiverr, fiverr international]
+    ats: comeet
+    params:
+      comeet_slug: fiverr        # https://www.comeet.com/jobs/fiverr/60.002
+      company_uid: "60.002"
+
+  - slug: appsflyer
+    name: AppsFlyer
+    aliases: [appsflyer, apps flyer]
+    ats: greenhouse
+    params:
+      board: appsflyer           # https://boards-api.greenhouse.io/v1/boards/appsflyer/jobs
+
+  - slug: taboola
+    name: Taboola
+    aliases: [taboola]
+    ats: greenhouse
+    params:
+      board: taboola             # https://boards-api.greenhouse.io/v1/boards/taboola/jobs
+
+  - slug: payoneer
+    name: Payoneer
+    aliases: [payoneer]
+    ats: greenhouse
+    params:
+      board: payoneer            # https://boards-api.greenhouse.io/v1/boards/payoneer/jobs
+
+  - slug: nice
+    name: NICE
+    aliases: [nice, nice ltd, nice systems, nice ltd.]
+    ats: greenhouse
+    params:
+      board: nice                # https://boards-api.greenhouse.io/v1/boards/nice/jobs
+
+  - slug: amdocs
+    name: Amdocs
+    aliases: [amdocs]
+    ats: eightfold
+    params:
+      host: jobs.amdocs.com      # https://jobs.amdocs.com/careers
+      domain: amdocs.com
+      location: Israel
+
+  - slug: playtika
+    name: Playtika
+    aliases: [playtika]
+    ats: greenhouse
+    params:
+      board: playtikaltd         # https://boards-api.greenhouse.io/v1/boards/playtikaltd/jobs
+
   # ---- Phase 4 (verified endpoints, collectors not built yet) ----
   - slug: nvidia
     name: NVIDIA
@@ -88,15 +140,10 @@ companies:
       company_id: Wix2
       country: il
 
-  - slug: playtika
-    name: Playtika
-    aliases: [playtika]
-    ats: greenhouse
-    enabled: false
-    params:
-      board: playtikaltd
-
-# Ideas for later (ATS still to be checked):
-# Check Point, CyberArk, Amdocs, NICE, Elbit, Fiverr, Payoneer, AppsFlyer, Taboola,
-# Bank Hapoalim, Bank Leumi, Discount, Mizrahi-Tefahot.
+# Checked and NOT added (Nov 2026):
+#   Check Point  - own site (careers.checkpoint.com), blocks automated requests (403).
+#   Elbit        - own site, blocks automated requests (403).
+#   Bank Hapoalim, Bank Leumi - own sites, block automated requests.
+#   Discount, Mizrahi-Tefahot - not checked yet (likely own sites as well).
+#   CyberArk     - acquired by Palo Alto Networks; careers moved to paloaltonetworks.com (not checked yet).
 # Google, Microsoft, Apple: covered by email alerts (phase 3), not scraped.

@@ -4,12 +4,16 @@ from __future__ import annotations
 from .ashby import AshbyCollector
 from .base import Collector
 from .comeet import ComeetCollector
+from .eightfold import EightfoldCollector
+from .greenhouse import GreenhouseCollector
 from .lever import LeverCollector
 
 COLLECTORS: dict[str, type[Collector]] = {
     "ashby": AshbyCollector,
     "comeet": ComeetCollector,
     "lever": LeverCollector,
+    "greenhouse": GreenhouseCollector,
+    "eightfold": EightfoldCollector,
 }
 
 
