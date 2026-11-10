@@ -121,7 +121,7 @@ companies:
 
   - slug: discount
     name: Bank Discount
-    aliases: [discount, bank discount, israel discount bank, דיסקונט, בנק דיסקונט]
+    aliases: [discount, bank discount, discount bank, israel discount bank, "Discount Bank בנק דיסקונט", דיסקונט, בנק דיסקונט]
     ats: oracle_hcm
     params:
       host: ehsb.fa.em2.oraclecloud.com   # https://www.discountbank.co.il/jobs/
@@ -129,7 +129,7 @@ companies:
 
   - slug: mizrahi
     name: Mizrahi-Tefahot
-    aliases: [mizrahi, mizrahi tefahot, mizrahi-tefahot, מזרחי, מזרחי טפחות, מזרחי-טפחות]
+    aliases: [mizrahi, mizrahi tefahot, mizrahi-tefahot, bank mizrahi-tefahot, mizrahi tefahot bank, בנק מזרחי טפחות, מזרחי, מזרחי טפחות, מזרחי-טפחות]
     ats: mizrahi
     params:
       url: https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/
