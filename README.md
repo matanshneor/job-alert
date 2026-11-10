@@ -34,7 +34,7 @@ Flags: `--only monday,upwind`, `--sample-alerts 3` (send test alerts from stored
 | Lever (EU) | `jobalert/collectors/lever.py` | Mobileye |
 | Greenhouse | `jobalert/collectors/greenhouse.py` | AppsFlyer, Taboola, Payoneer, NICE, Playtika |
 | Eightfold | `jobalert/collectors/eightfold.py` | Amdocs |
-| Workday | `jobalert/collectors/workday.py` | Palo Alto Networks (incl. CyberArk) — NVIDIA, Intel not enabled yet |
+| Workday | `jobalert/collectors/workday.py` | Palo Alto Networks (incl. CyberArk), NVIDIA, Intel |
 | Oracle Recruiting Cloud | `jobalert/collectors/oracle_hcm.py` | Bank Discount |
 | Careers page (HTML) | `jobalert/collectors/mizrahi.py` | Mizrahi-Tefahot |
 | SmartRecruiters | phase 4 | Wix |

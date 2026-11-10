@@ -135,28 +135,26 @@ companies:
     params:
       url: https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/
 
-  # ---- Phase 4 ----
-  # NVIDIA and Intel: the workday collector exists now, but these two were not re-checked yet.
   - slug: nvidia
     name: NVIDIA
     aliases: [nvidia]
     ats: workday
-    enabled: false
     params:
       host: nvidia.wd5.myworkdayjobs.com
       tenant: nvidia
       site: NVIDIAExternalCareerSite
+      country: IL
       facets: {locationHierarchy1: ["2fcb99c455831013ea52bbe14cf9326c"]}   # Israel
 
   - slug: intel
     name: Intel
     aliases: [intel, intel corporation]
     ats: workday
-    enabled: false
     params:
       host: intel.wd1.myworkdayjobs.com
       tenant: intel
       site: External
+      country: IL
       facets:
         locations:   # Israel sites: Haifa, Jerusalem, Kiryat-Gat, Petah-Tikva
           - 1e4a4eb3adf1013563ba9174bf817fcd
