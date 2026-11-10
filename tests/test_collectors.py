@@ -1,10 +1,14 @@
 import httpx
+import pytest
 
 from jobalert.collectors.ashby import AshbyCollector
 from jobalert.collectors.comeet import ComeetCollector
 from jobalert.collectors.eightfold import EightfoldCollector
 from jobalert.collectors.greenhouse import GreenhouseCollector
 from jobalert.collectors.lever import LeverCollector
+from jobalert.collectors.mizrahi import MizrahiCollector
+from jobalert.collectors.oracle_hcm import OracleHcmCollector
+from jobalert.collectors.workday import WorkdayCollector
 from jobalert.config import CompanyConfig
 from jobalert.location import LocationFilter
 
@@ -15,6 +19,12 @@ MOBILEYE = CompanyConfig("mobileye", "Mobileye", "lever", {"site": "mobileye", "
 PAYONEER = CompanyConfig("payoneer", "Payoneer", "greenhouse", {"board": "payoneer"})
 AMDOCS = CompanyConfig("amdocs", "Amdocs", "eightfold",
                        {"host": "jobs.amdocs.com", "domain": "amdocs.com", "location": "Israel"})
+PANW = CompanyConfig("paloalto", "Palo Alto Networks", "workday", {
+    "host": "paloaltonetworks.wd5.myworkdayjobs.com", "tenant": "paloaltonetworks",
+    "site": "panwexternalcareers", "country": "IL", "facets": {"locations": ["abc"]}})
+DISCOUNT = CompanyConfig("discount", "Bank Discount", "oracle_hcm",
+                         {"host": "ehsb.fa.em2.oraclecloud.com", "site_number": "CX_3001"})
+MIZRAHI = CompanyConfig("mizrahi", "Mizrahi-Tefahot", "mizrahi", {})
 UPWIND = CompanyConfig("upwind", "Upwind", "comeet", {"comeet_slug": "upwind", "company_uid": "49.004"})
 
 
@@ -118,3 +128,70 @@ def test_eightfold_pages_filters_and_fetches_details(settings):
     assert [loc.passes(j) for j in jobs] == [True, False, True]   # plain "Remote" is kept
     col.fetch_details(il)
     assert "Who are we?" in il.description and "SQL" in il.description
+
+
+class WorkdayHttp(FakeHttp):
+    def post_json(self, url, payload, **kwargs):
+        self.calls.append(url)
+        self.posts = getattr(self, "posts", []) + [payload]
+        return load_fixture("workday_panw_p1.json" if payload["offset"] == 0 else "workday_panw_p2.json")
+
+
+def test_workday_pages_uses_facets_and_fetches_details(settings, monkeypatch):
+    monkeypatch.setattr("jobalert.collectors.workday.PAGE_SIZE", 2)
+    http = WorkdayHttp({"/wday/cxs/paloaltonetworks/panwexternalcareers/job/": load_fixture("workday_panw_details.json")})
+    col = WorkdayCollector(PANW, http, {})
+    jobs = col.list_jobs()
+    # total comes from the first page only (later pages report 0)
+    assert [j.job_key for j in jobs] == ["workday:paloalto:JR-1", "workday:paloalto:JR-2", "workday:paloalto:JR-3"]
+    assert all(p["appliedFacets"] == {"locations": ["abc"]} for p in http.posts)
+    assert jobs[0].url == ("https://paloaltonetworks.wd5.myworkdayjobs.com/panwexternalcareers"
+                           "/job/Office---Israel---Tel-Aviv/Senior-Backend-Engineer--Cortex-_JR-1")
+    loc = LocationFilter(settings.location)
+    assert all(loc.passes(j) for j in jobs)        # "2 Locations" passes thanks to country: IL
+    col.fetch_details(jobs[0])
+    assert "Your Impact" in jobs[0].description and "Go" in jobs[0].description
+
+
+def test_oracle_hcm_parses_and_fetches_details(settings):
+    http = FakeHttp({
+        "recruitingCEJobRequisitionDetails": load_fixture("oracle_discount_details.json"),
+        "recruitingCEJobRequisitions": load_fixture("oracle_discount.json"),
+    })
+    col = OracleHcmCollector(DISCOUNT, http, {})
+    jobs = col.list_jobs()
+    assert len(http.calls) == 1                      # total 2 < page size: one page
+    assert "siteNumber=CX_3001,limit=25,offset=0" in http.calls[0]
+    teller, analyst = jobs
+    assert teller.job_key == "oracle_hcm:discount:5794" and teller.country == "IL"
+    assert teller.url.endswith("/hcmUI/CandidateExperience/he/sites/CX_3001/job/5794")
+    assert analyst.all_locations == ["תל אביב, ישראל", "ירושלים, ישראל"]
+    loc = LocationFilter(settings.location)
+    assert all(loc.passes(j) for j in jobs)
+    col.fetch_details(teller)
+    assert 'Id="5794"' in http.calls[-1]
+    assert teller.description.startswith("ניהול הקשר עם הלקוחות")
+    assert "תואר ראשון" in teller.description
+
+
+def test_mizrahi_parses_page_and_fetches_job_page(settings):
+    http = FakeHttp({
+        "open-jobs/java-developer/": load_fixture("mizrahi_job_page_snippet.html"),
+        "open-jobs/": load_fixture("mizrahi_page_snippet.html"),
+    })
+    col = MizrahiCollector(MIZRAHI, http, {})
+    jobs = col.list_jobs()
+    # The site's own ids repeat (JB-11 twice), so the link slug is the id.
+    assert [j.job_key for j in jobs] == ["mizrahi:mizrahi:lodseller", "mizrahi:mizrahi:java-developer"]
+    assert jobs[1].title == "מפתח/ת Java" and jobs[1].location == "מרכז"
+    assert jobs[1].url.endswith("/career/open-jobs/java-developer/")
+    loc = LocationFilter(settings.location)
+    assert all(loc.passes(j) for j in jobs)
+    col.fetch_details(jobs[1])
+    assert "Java, Spring" in jobs[1].description
+
+
+def test_mizrahi_fails_loudly_when_layout_changes():
+    http = FakeHttp({"open-jobs/": "<html><body>new design</body></html>"})
+    with pytest.raises(RuntimeError):
+        MizrahiCollector(MIZRAHI, http, {}).list_jobs()

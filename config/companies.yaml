@@ -1,8 +1,9 @@
 # Companies to watch.
 #
 # To add a company: add an entry with its ATS ("applicant tracking system") and params.
-# Supported ATS types so far: ashby, comeet, lever, greenhouse, eightfold.
-# Coming in phase 4: workday, smartrecruiters.
+# Supported ATS types so far: ashby, comeet, lever, greenhouse, eightfold, workday, oracle_hcm,
+# and mizrahi (a parser for that one bank's careers page).
+# Coming in phase 4: smartrecruiters.
 #
 # Fields:
 #   slug     - short stable id, used in job keys. Never change it after the first run.
@@ -103,7 +104,39 @@ companies:
     params:
       board: playtikaltd         # https://boards-api.greenhouse.io/v1/boards/playtikaltd/jobs
 
-  # ---- Phase 4 (verified endpoints, collectors not built yet) ----
+  - slug: paloalto
+    name: Palo Alto Networks
+    aliases: [palo alto networks, palo alto, paloaltonetworks, panw, cyberark, idira]   # CyberArk is now part of PANW
+    ats: workday
+    params:
+      host: paloaltonetworks.wd5.myworkdayjobs.com   # https://jobs.paloaltonetworks.com
+      tenant: paloaltonetworks
+      site: panwexternalcareers
+      country: IL
+      facets:
+        locations:   # Israel: Be'er Sheva, Petach Tikva, Tel Aviv (office), Tel Aviv-Yafo
+          - 45eb6188f3f71001f08639efd22e0000
+          - 45eb6188f3f71001f086499c91d00000
+          - 462d9b819ff31060221ce2cad22df7c3
+          - e62cc4173be310016a98d270a39f0000
+
+  - slug: discount
+    name: Bank Discount
+    aliases: [discount, bank discount, israel discount bank, דיסקונט, בנק דיסקונט]
+    ats: oracle_hcm
+    params:
+      host: ehsb.fa.em2.oraclecloud.com   # https://www.discountbank.co.il/jobs/
+      site_number: CX_3001
+
+  - slug: mizrahi
+    name: Mizrahi-Tefahot
+    aliases: [mizrahi, mizrahi tefahot, mizrahi-tefahot, מזרחי, מזרחי טפחות, מזרחי-טפחות]
+    ats: mizrahi
+    params:
+      url: https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/
+
+  # ---- Phase 4 ----
+  # NVIDIA and Intel: the workday collector exists now, but these two were not re-checked yet.
   - slug: nvidia
     name: NVIDIA
     aliases: [nvidia]
@@ -144,6 +177,5 @@ companies:
 #   Check Point  - own site (careers.checkpoint.com), blocks automated requests (403).
 #   Elbit        - own site, blocks automated requests (403).
 #   Bank Hapoalim, Bank Leumi - own sites, block automated requests.
-#   Discount, Mizrahi-Tefahot - not checked yet (likely own sites as well).
-#   CyberArk     - acquired by Palo Alto Networks; careers moved to paloaltonetworks.com (not checked yet).
+#   CyberArk     - acquired by Palo Alto Networks; its jobs come in through the 'paloalto' entry above.
 # Google, Microsoft, Apple: covered by email alerts (phase 3), not scraped.

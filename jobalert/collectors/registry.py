@@ -7,6 +7,9 @@ from .comeet import ComeetCollector
 from .eightfold import EightfoldCollector
 from .greenhouse import GreenhouseCollector
 from .lever import LeverCollector
+from .mizrahi import MizrahiCollector
+from .oracle_hcm import OracleHcmCollector
+from .workday import WorkdayCollector
 
 COLLECTORS: dict[str, type[Collector]] = {
     "ashby": AshbyCollector,
@@ -14,6 +17,9 @@ COLLECTORS: dict[str, type[Collector]] = {
     "lever": LeverCollector,
     "greenhouse": GreenhouseCollector,
     "eightfold": EightfoldCollector,
+    "workday": WorkdayCollector,
+    "oracle_hcm": OracleHcmCollector,
+    "mizrahi": MizrahiCollector,
 }
 
 
