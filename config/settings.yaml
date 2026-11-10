@@ -52,6 +52,7 @@ location:
 alerts:
   max_per_run: 25             # extra pending alerts wait for the next run (nothing is lost)
   telegram_delay_seconds: 1.1 # Telegram allows about 1 message per second per chat
+  tailor_button: false        # "התאם קו״ח" button under alerts; turn on when phase 5 (CV tailoring) is built
 
 closing:
   missed_runs_to_close: 2     # a job must be missing in 2 successful runs in a row

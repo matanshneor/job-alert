@@ -37,3 +37,14 @@ def test_email_job_without_score():
     text = format_alert(_content(email_source="LinkedIn"))
     assert "📬 ממייל של LinkedIn · בלי ציון AI" in text
     assert "עדיין בלי AI" not in text
+
+
+def test_tailor_button_is_off_by_default():
+    from jobalert.notify.telegram import TelegramClient
+    sent = []
+    for enabled, expected in [(False, None), (True, tailor_keyboard(7))]:
+        tg = TelegramClient("t", "c", tailor_button=enabled)
+        tg.send_message = lambda text, markup=None: sent.append(markup) or 1
+        tg.send_alert(_content())
+        assert sent[-1] == expected
+        tg.close()

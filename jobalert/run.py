@@ -278,7 +278,8 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
              include_email: bool = True) -> int:
     db = Database(require_env("DATABASE_URL"))
     tg = TelegramClient(require_env("TELEGRAM_BOT_TOKEN"), require_env("TELEGRAM_CHAT_ID"),
-                        settings.alerts["telegram_delay_seconds"])
+                        settings.alerts["telegram_delay_seconds"],
+                        tailor_button=bool(settings.alerts.get("tailor_button", False)))
     http = make_http(settings)
     loc = LocationFilter(settings.location)
     run_id = db.start_run()

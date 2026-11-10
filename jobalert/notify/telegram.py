@@ -69,10 +69,12 @@ def tailor_keyboard(job_id: int) -> dict[str, Any]:
 
 
 class TelegramClient:
-    def __init__(self, token: str, chat_id: str, delay_seconds: float = 1.1) -> None:
+    def __init__(self, token: str, chat_id: str, delay_seconds: float = 1.1,
+                 tailor_button: bool = False) -> None:
         self._token = token
         self._chat_id = chat_id
         self._delay = delay_seconds
+        self._tailor_button = tailor_button
         self._client = httpx.Client(timeout=30)
         self._last_send = 0.0
 
@@ -112,7 +114,8 @@ class TelegramClient:
 
     def send_alert(self, content: AlertContent) -> tuple[int, str]:
         text = format_alert(content)
-        message_id = self.send_message(text, tailor_keyboard(content.job_id))
+        keyboard = tailor_keyboard(content.job_id) if self._tailor_button else None
+        message_id = self.send_message(text, keyboard)
         return message_id, text
 
     def mark_closed(self, message_id: int, original_text: str) -> None:
