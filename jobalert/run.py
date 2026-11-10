@@ -3,7 +3,7 @@
     uv run python -m jobalert.run                 # normal run (what Railway's cron executes)
     uv run python -m jobalert.run --dry-run       # fetch + filter + print; no DB, no Telegram
     uv run python -m jobalert.run --sample-alerts 3   # also send 3 test alerts from stored jobs
-    uv run python -m jobalert.run --only monday,upwind
+    uv run python -m jobalert.run --only monday,upwind   # "gmail" = the email sources
 """
 from __future__ import annotations
 
@@ -21,6 +21,8 @@ from .collectors.registry import get_collector_class
 from .config import CompanyConfig, Settings, load_companies, load_settings, require_env
 from .db import Database
 from .dedup import fingerprint
+from .gmail.collect import PARSERS, collect_emails
+from .gmail.imap import GmailReader
 from .http import PoliteClient
 from .location import LocationFilter
 from .notify.telegram import AlertContent, TelegramClient
@@ -39,12 +41,21 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Check job sources and send Telegram alerts.")
     p.add_argument("--dry-run", action="store_true", help="fetch and filter only; no DB, no Telegram")
     p.add_argument("--sample-alerts", type=int, default=0, help="send N test alerts from stored jobs")
-    p.add_argument("--only", default="", help="comma-separated company slugs to run")
+    p.add_argument("--only", default="", help="comma-separated company slugs to run ('gmail' = emails)")
     return p.parse_args(argv)
 
 
+def _wanted(only: str) -> set[str]:
+    return {s.strip() for s in only.split(",") if s.strip()}
+
+
+def emails_wanted(only: str) -> bool:
+    wanted = _wanted(only)
+    return not wanted or "gmail" in wanted
+
+
 def active_companies(companies: list[CompanyConfig], only: str) -> list[CompanyConfig]:
-    wanted = {s.strip() for s in only.split(",") if s.strip()}
+    wanted = _wanted(only)
     result = []
     for c in companies:
         if wanted and c.slug not in wanted:
@@ -65,7 +76,24 @@ def make_http(settings: Settings) -> PoliteClient:
 
 # ---------------------------------------------------------------- dry run
 
-def dry_run(companies: list[CompanyConfig], settings: Settings) -> int:
+def dry_run_emails(settings: Settings) -> None:
+    cfg = settings.email
+    reader = GmailReader(require_env("GMAIL_ADDRESS"), require_env("GMAIL_APP_PASSWORD"))
+    try:
+        for src in cfg.get("sources") or []:
+            uids = reader.search(f"{src['query']} newer_than:{int(cfg.get('lookback_days', 3))}d")
+            jobs = []
+            for uid in uids:
+                jobs.extend(PARSERS[src["parser"]](reader.fetch(uid)))
+            print(f"\n[{src['name']} emails] {len(uids)} emails, {len(jobs)} jobs (incl. repeats)")
+            for j in jobs[:5]:
+                print(f"   - {j.title} | {j.company} | {j.location}")
+                print(f"     {j.url}")
+    finally:
+        reader.close()
+
+
+def dry_run(companies: list[CompanyConfig], settings: Settings, include_email: bool = False) -> int:
     http = make_http(settings)
     loc = LocationFilter(settings.location)
     for company in companies:
@@ -82,6 +110,11 @@ def dry_run(companies: list[CompanyConfig], settings: Settings) -> int:
             print(f"   - {j.title} | {j.location} | {j.workplace_type} | desc {desc}")
             print(f"     {j.url}")
     http.close()
+    if include_email and settings.email.get("enabled"):
+        try:
+            dry_run_emails(settings)
+        except Exception as exc:  # noqa: BLE001
+            print(f"\n[emails] FAILED: {exc}")
     return 0
 
 
@@ -149,7 +182,8 @@ def evaluate_pending(db: Database, tg: TelegramClient, settings: Settings) -> di
     """Run the AI filter + score on new jobs. Rejected or low-score jobs are marked skipped."""
     ai = settings.ai
     stats = {"evaluated": 0, "rejected": 0, "below_min_score": 0, "duplicates": 0, "waiting": 0}
-    rows = db.jobs_to_evaluate("pending", ai["max_evaluations_per_run"])
+    email_sources = list(settings.email_sources)   # no description in emails: never evaluated
+    rows = db.jobs_to_evaluate("pending", ai["max_evaluations_per_run"], email_sources)
     if not rows:
         return stats
     try:
@@ -186,13 +220,17 @@ def evaluate_pending(db: Database, tg: TelegramClient, settings: Settings) -> di
                             f"<code>{html.escape(stats['error'])}</code>")
     else:
         db.record_source_success("ai:evaluate", stats["evaluated"], {})
-    stats["waiting"] = db.count_to_evaluate("pending")
+    stats["waiting"] = db.count_to_evaluate("pending", email_sources)
     return stats
 
 
-def send_pending_alerts(db: Database, tg: TelegramClient, limit: int, require_evaluation: bool) -> int:
+def send_pending_alerts(
+    db: Database, tg: TelegramClient, limit: int, require_evaluation: bool,
+    email_sources: dict[str, str] | None = None,
+) -> int:
+    email_sources = email_sources or {}
     sent = 0
-    for row in db.pending_alerts(limit, require_evaluation):
+    for row in db.pending_alerts(limit, require_evaluation, list(email_sources)):
         borderline = row.get("decision") == "borderline"
         alert_id = db.claim_alert(row["id"], row["source"], row["fingerprint"], borderline)
         if alert_id is None:
@@ -202,7 +240,7 @@ def send_pending_alerts(db: Database, tg: TelegramClient, limit: int, require_ev
             job_id=row["id"], company=row["company"], title=row["title"],
             location=row["location"], workplace_type=row["workplace_type"], url=row["url"],
             score=row.get("score"), borderline=borderline, borderline_gaps=row.get("gaps_he"),
-            reason_he=row.get("reason_he"),
+            reason_he=row.get("reason_he"), email_source=email_sources.get(row["source"]),
         )
         try:
             message_id, text = tg.send_alert(content)
@@ -226,17 +264,18 @@ def send_samples(db: Database, tg: TelegramClient, n: int) -> None:
 
 def baseline_summary(stats: dict[str, Any], companies: list[CompanyConfig]) -> str | None:
     names = {c.source_key: c.name for c in companies}
-    lines = [f"• {html.escape(names[k])}: {s['new']} משרות" for k, s in stats.items() if s.get("baseline")]
+    lines = [f"• {html.escape(s.get('name') or names.get(k, k))}: {s['new']} משרות"
+             for k, s in stats.items() if s.get("baseline")]
     if not lines:
         return None
     return (
         "📥 <b>התחלתי לעקוב אחרי:</b>\n" + "\n".join(lines) +
-        "\n\nהמשרות הקיימות נשמרו בלי התראות. מעכשיו תקבל התראה על כל משרה חדשה."
-        "\nבשלב 2 ה-AI יעבור גם על המשרות הקיימות וישלח רק את הרלוונטיות."
+        "\n\nהמשרות הקיימות נשמרו בלי התראות. מעכשיו תקבל התראה על כל משרה חדשה ורלוונטית."
     )
 
 
-def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: int) -> int:
+def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: int,
+             include_email: bool = True) -> int:
     db = Database(require_env("DATABASE_URL"))
     tg = TelegramClient(require_env("TELEGRAM_BOT_TOKEN"), require_env("TELEGRAM_CHAT_ID"),
                         settings.alerts["telegram_delay_seconds"])
@@ -248,6 +287,8 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
     try:
         for company in companies:
             stats[company.source_key] = collect_company(company, db, http, loc, tg, settings)
+        if include_email:
+            stats.update(collect_emails(db, tg, settings, load_companies()))
         summary = baseline_summary(stats, companies)
         if summary:
             tg.send_message(summary)
@@ -256,7 +297,8 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
         ai_on = bool(settings.ai.get("enabled"))
         if ai_on:
             stats["_ai"] = evaluate_pending(db, tg, settings)
-        sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"], require_evaluation=ai_on)
+        sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"], require_evaluation=ai_on,
+                                   email_sources=settings.email_sources)
         waiting = db.pending_count()
         stats["_alerts"] = {"sent": sent, "still_pending": waiting}
         stats["_seconds"] = round(time.monotonic() - started, 1)
@@ -278,9 +320,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     settings = load_settings()
     companies = active_companies(load_companies(), args.only)
+    include_email = emails_wanted(args.only)
     if args.dry_run:
-        return dry_run(companies, settings)
-    return real_run(companies, settings, args.sample_alerts)
+        return dry_run(companies, settings, include_email)
+    return real_run(companies, settings, args.sample_alerts, include_email)
 
 
 if __name__ == "__main__":

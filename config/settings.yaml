@@ -67,3 +67,19 @@ ai:
   max_evaluations_per_run: 40        # the rest wait for the next run
   max_description_chars: 60000       # safety cap; real postings are far shorter
   min_score_to_alert: 40             # jobs that pass the gap rules but score below this are not sent (0 = send all)
+
+email:
+  # Job-alert emails read from Gmail over IMAP (read-only). Needs GMAIL_ADDRESS + GMAIL_APP_PASSWORD.
+  # These jobs have no description, so they skip the AI and the location filter, and are sent as-is
+  # (still never twice, and never if the same job was already sent from a company board).
+  enabled: true
+  lookback_days: 3                   # each run looks at emails from the last N days it hasn't read yet
+  sources:
+    - key: gmail_linkedin            # stored as jobs.source; never change after the first run
+      name: LinkedIn
+      query: "from:jobalerts-noreply@linkedin.com"
+      parser: linkedin
+    - key: gmail_jobify
+      name: Jobify
+      query: "from:info@jobify360.co.il"
+      parser: jobify

@@ -160,20 +160,23 @@ class Database:
 
     # ---------- alerts ----------
 
-    def pending_alerts(self, limit: int, require_evaluation: bool) -> list[dict[str, Any]]:
-        """Jobs waiting for an alert, best score first. With AI on, only evaluated jobs are sent."""
-        join = "join" if require_evaluation else "left join"
+    def pending_alerts(
+        self, limit: int, require_evaluation: bool, no_ai_sources: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """Jobs waiting for an alert, best score first. With AI on, only evaluated jobs are sent,
+        except jobs from no_ai_sources (email alerts), which are sent without an evaluation."""
         return self.conn.execute(
-            f"""
+            """
             select j.id, j.source, j.company, j.title, j.location, j.url, j.fingerprint,
                    j.raw->>'workplace_type' as workplace_type,
                    e.score, e.decision, e.reason_he, e.gaps_he
-            from jobs j {join} evaluations e on e.job_id = j.id
+            from jobs j left join evaluations e on e.job_id = j.id
             where j.notify_status = 'pending' and j.status = 'open'
+              and (not %s or e.id is not null or j.source = any(%s))
             order by e.score desc nulls last, j.first_seen_at, j.id
             limit %s
             """,
-            (limit,),
+            (require_evaluation, list(no_ai_sources or []), limit),
         ).fetchall()
 
     def pending_count(self) -> int:
@@ -239,25 +242,30 @@ class Database:
 
     # ---------- AI evaluation ----------
 
-    def jobs_to_evaluate(self, notify_status: str, limit: int) -> list[dict[str, Any]]:
-        """Open jobs in the given notify_status that have no evaluation yet, oldest first."""
+    def jobs_to_evaluate(
+        self, notify_status: str, limit: int, exclude_sources: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """Open jobs in the given notify_status that have no evaluation yet, oldest first.
+        exclude_sources: sources that are never evaluated (email alerts)."""
         return self.conn.execute(
             """
             select j.id, j.source, j.company, j.title, j.location, j.description, j.fingerprint
             from jobs j left join evaluations e on e.job_id = j.id
             where j.notify_status = %s and j.status = 'open' and e.id is null
+              and not (j.source = any(%s))
             order by j.first_seen_at, j.id limit %s
             """,
-            (notify_status, limit),
+            (notify_status, list(exclude_sources or []), limit),
         ).fetchall()
 
-    def count_to_evaluate(self, notify_status: str) -> int:
+    def count_to_evaluate(self, notify_status: str, exclude_sources: list[str] | None = None) -> int:
         return self.conn.execute(
             """
             select count(*) as n from jobs j left join evaluations e on e.job_id = j.id
             where j.notify_status = %s and j.status = 'open' and e.id is null
+              and not (j.source = any(%s))
             """,
-            (notify_status,),
+            (notify_status, list(exclude_sources or [])),
         ).fetchone()["n"]
 
     def is_cross_source_duplicate(self, fingerprint: str, source: str) -> bool:
@@ -325,6 +333,29 @@ class Database:
                 """
             ).rowcount
         return released, skipped
+
+    # ---------- emails (phase 3) ----------
+
+    def processed_email_ids(self, gmail_ids: list[str]) -> set[str]:
+        if not gmail_ids:
+            return set()
+        rows = self.conn.execute(
+            "select gmail_id from processed_emails where gmail_id = any(%s)", (gmail_ids,)
+        ).fetchall()
+        return {r["gmail_id"] for r in rows}
+
+    def mark_emails_processed(self, rows: list[tuple[str, str, str, Any, int]]) -> None:
+        """rows: (gmail_id, source, subject, received_at, jobs_found)."""
+        if not rows:
+            return
+        with self.conn.transaction(), self.conn.cursor() as cur:
+            cur.executemany(
+                """
+                insert into processed_emails (gmail_id, source, subject, received_at, jobs_found)
+                values (%s, %s, %s, %s, %s) on conflict (gmail_id) do nothing
+                """,
+                rows,
+            )
 
     # ---------- profile ----------
 

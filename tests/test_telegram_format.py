@@ -31,3 +31,9 @@ def test_test_flag_and_button():
     kb = tailor_keyboard(7)
     button = kb["inline_keyboard"][0][0]
     assert button == {"text": "התאם קו״ח", "callback_data": "tailor:7"}
+
+
+def test_email_job_without_score():
+    text = format_alert(_content(email_source="LinkedIn"))
+    assert "📬 ממייל של LinkedIn · בלי ציון AI" in text
+    assert "עדיין בלי AI" not in text

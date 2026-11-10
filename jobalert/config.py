@@ -37,6 +37,12 @@ class Settings:
     alerts: dict[str, Any]
     closing: dict[str, Any]
     ai: dict[str, Any]
+    email: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def email_sources(self) -> dict[str, str]:
+        """Email source key -> display name. These jobs skip the AI (emails have no description)."""
+        return {s["key"]: s["name"] for s in (self.email.get("sources") or [])}
 
 
 def load_companies(path: Path | None = None) -> list[CompanyConfig]:
@@ -69,6 +75,7 @@ def load_settings(path: Path | None = None) -> Settings:
         alerts=data["alerts"],
         closing=data["closing"],
         ai=data.get("ai") or {"enabled": False},
+        email=data.get("email") or {"enabled": False},
     )
 
 

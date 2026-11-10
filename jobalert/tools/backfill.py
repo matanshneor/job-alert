@@ -66,7 +66,7 @@ def main() -> None:
                 (args.sample,),
             ).fetchall()
         else:
-            rows = db.jobs_to_evaluate("baseline", args.limit)
+            rows = db.jobs_to_evaluate("baseline", args.limit, list(settings.email_sources))
         print(f"Evaluating {len(rows)} jobs ({'sample, not saved' if args.sample else 'saving results'})")
         done = 0
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
@@ -91,7 +91,7 @@ def main() -> None:
         print("\nBaseline evaluation summary (decision: total | score >=70 | 50-69 | <50):")
         for r in db.baseline_summary():
             print(f"  {r['decision']:10s} {r['n']:4d} | {r['s70']:4d} | {r['s50']:4d} | {r['below50']:4d}")
-        print(f"  not evaluated yet: {db.count_to_evaluate('baseline')}")
+        print(f"  not evaluated yet: {db.count_to_evaluate('baseline', list(settings.email_sources))}")
 
     if args.release:
         released, skipped = db.release_baseline(args.min_score)

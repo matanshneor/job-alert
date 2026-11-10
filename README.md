@@ -1,7 +1,7 @@
 # job-alert
 
-Personal job-alert tool. Every hour it checks company career boards (through their ATS public APIs),
-stores jobs in Supabase, and sends new relevant jobs to Telegram.
+Personal job-alert tool. Every hour it checks company career boards (through their ATS public APIs) and job-alert
+emails in Gmail (LinkedIn, Jobify), stores jobs in Postgres, and sends new relevant jobs to Telegram.
 
 ## Run locally
 
@@ -14,7 +14,9 @@ uv run python -m jobalert.run                     # real run
 uv run pytest                                     # tests
 ```
 
-Flags: `--only monday,upwind`, `--sample-alerts 3` (send test alerts from stored jobs).
+Flags: `--only monday,upwind` (`gmail` = the email sources), `--sample-alerts 3` (send test alerts from stored jobs).
+
+Check Gmail access: `uv run python -m jobalert.tools.gmail_check`.
 
 ## How it works
 
@@ -39,7 +41,20 @@ Flags: `--only monday,upwind`, `--sample-alerts 3` (send test alerts from stored
 | Careers page (HTML) | `jobalert/collectors/mizrahi.py` | Mizrahi-Tefahot |
 | SmartRecruiters | `jobalert/collectors/smartrecruiters.py` | Wix |
 
+### Job-alert emails (phase 3)
+
+- Gmail is read over IMAP with an app password, **read-only** (mailbox opened with EXAMINE, bodies
+  fetched with BODY.PEEK: nothing is marked read, moved or deleted). Sources are in `settings.yaml` → `email`.
+- Parsers: `jobalert/gmail/parsers.py` (LinkedIn text part; Jobify HTML, weekly and legacy layouts).
+- Emails have no job description, so these jobs skip the AI and the location filter and are sent as-is,
+  marked "📬 ממייל של LinkedIn". They still go through cross-source dedup, so a job already sent from a
+  company board isn't sent again (and vice versa).
+- Each email is recorded in `processed_emails` once its jobs are saved. An email the parser can't read
+  is not recorded, so it is retried every run, and a Telegram warning is sent after 3 failing runs.
+- The first run baselines what is already in the inbox (no alerts).
+
 ## Deploy (Railway)
 
 Cron service, schedule `0 * * * *`, start command `python main.py`.
-Variables: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+Variables: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `ANTHROPIC_API_KEY`,
+`GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`.
