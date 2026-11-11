@@ -139,7 +139,7 @@ ai:
   score_effort: medium
   max_evaluations_per_run: 40        # the rest wait for the next run
   max_description_chars: 60000       # safety cap; real postings are far shorter
-  min_score_to_alert: 40             # jobs that pass the gap rules but score below this are not sent (0 = send all)
+  min_score_to_alert: 50             # jobs that pass the gap rules but score below this are not sent (0 = send all)
 
 email:
   # Job-alert emails read from Gmail over IMAP (read-only). Needs GMAIL_ADDRESS + GMAIL_APP_PASSWORD.
