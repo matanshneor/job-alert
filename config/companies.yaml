@@ -40,6 +40,7 @@ companies:
     name: ZIM
     aliases: [zim, zim integrated shipping services, zim integrated shipping]
     ats: comeet
+    enabled: false               # all its jobs are in Haifa, outside location.exclude_keywords
     params:
       comeet_slug: zim           # https://www.comeet.com/jobs/zim/72.008
       company_uid: "72.008"
@@ -169,9 +170,103 @@ companies:
       company_id: Wix2           # https://jobs.smartrecruiters.com/Wix2
       country: il
 
+  # ---- Added Nov 2026: Center-area tech companies on Greenhouse ----
+  - slug: catonetworks
+    name: Cato Networks
+    aliases: [cato networks, catonetworks]
+    ats: greenhouse
+    params:
+      board: catonetworks      # https://boards-api.greenhouse.io/v1/boards/catonetworks/jobs
+
+  - slug: wiz
+    name: Wiz
+    aliases: [wiz, wiz inc, wiz.io]
+    ats: greenhouse
+    params:
+      board: wizinc            # https://boards-api.greenhouse.io/v1/boards/wizinc/jobs
+
+  - slug: similarweb
+    name: Similarweb
+    aliases: [similarweb, similar web]
+    ats: greenhouse
+    params:
+      board: similarweb        # https://boards-api.greenhouse.io/v1/boards/similarweb/jobs
+
+  - slug: jfrog
+    name: JFrog
+    aliases: [jfrog, j frog]
+    ats: greenhouse
+    params:
+      board: jfrog             # https://boards-api.greenhouse.io/v1/boards/jfrog/jobs
+
+  - slug: sentinelone
+    name: SentinelOne
+    aliases: [sentinelone, sentinel one, sentinel labs]
+    ats: greenhouse
+    params:
+      board: sentinellabs      # https://boards-api.greenhouse.io/v1/boards/sentinellabs/jobs
+
+  - slug: riskified
+    name: Riskified
+    aliases: [riskified]
+    ats: greenhouse
+    params:
+      board: riskified         # https://boards-api.greenhouse.io/v1/boards/riskified/jobs
+
+  - slug: gong
+    name: Gong
+    aliases: [gong, gong.io, gongio]
+    ats: greenhouse
+    params:
+      board: gongio            # https://boards-api.greenhouse.io/v1/boards/gongio/jobs
+
+  - slug: via
+    name: Via
+    aliases: [via, via transportation, ridewithvia]
+    ats: greenhouse
+    params:
+      board: via               # https://boards-api.greenhouse.io/v1/boards/via/jobs
+
+  - slug: axonius
+    name: Axonius
+    aliases: [axonius]
+    ats: greenhouse
+    params:
+      board: axonius           # https://boards-api.greenhouse.io/v1/boards/axonius/jobs
+
+  - slug: forter
+    name: Forter
+    aliases: [forter]
+    ats: greenhouse
+    params:
+      board: forter            # https://boards-api.greenhouse.io/v1/boards/forter/jobs
+
+  - slug: yotpo
+    name: Yotpo
+    aliases: [yotpo]
+    ats: greenhouse
+    params:
+      board: yotpo             # https://boards-api.greenhouse.io/v1/boards/yotpo/jobs
+
+  - slug: transmitsecurity
+    name: Transmit Security
+    aliases: [transmit security, transmitsecurity]
+    ats: greenhouse
+    params:
+      board: transmitsecurity  # https://boards-api.greenhouse.io/v1/boards/transmitsecurity/jobs
+
+  - slug: orcasecurity
+    name: Orca Security
+    aliases: [orca security, orcasecurity]
+    ats: greenhouse
+    params:
+      board: orcasecurity      # https://boards-api.greenhouse.io/v1/boards/orcasecurity/jobs
+
 # Checked and NOT added (Nov 2026):
 #   Check Point  - own site (careers.checkpoint.com), blocks automated requests (403).
 #   Elbit        - own site, blocks automated requests (403).
 #   Bank Hapoalim, Bank Leumi - own sites, block automated requests.
 #   CyberArk     - acquired by Palo Alto Networks; its jobs come in through the 'paloalto' entry above.
+#   Not found on a supported ATS yet: Hibob, Elementor, eToro, Lightricks, Rapyd, Tipalti, Nayax, Lusha.
+#   On a supported ATS but no Center-area jobs (Nov 2026): Lemonade, Snyk (ashby), Pagaya, Fireblocks (greenhouse).
 # Google, Microsoft, Apple: covered by email alerts (phase 3), not scraped.
