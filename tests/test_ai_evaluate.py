@@ -106,3 +106,16 @@ def test_borderline_is_scored_with_hebrew_gaps():
 def test_unreadable_filter_output_still_alerts_without_score():
     ev = evaluate_job(FakeLLM("refused"), PROFILE, JOB, AI)
     assert ev.decision == "alert" and ev.score is None and ev.reason_he
+
+
+def test_title_only_estimate_is_one_call_marked_as_estimate():
+    from jobalert.ai.evaluate import TITLE_ONLY_MODE, evaluate_title_only
+    llm = FakeLLM({"score": 120, "reason_he": "הכותרת מתאימה לניסיון שלך"})
+    job = {"id": 2, "company": "abra", "title": "AI Solutions & Adoption Specialist", "location": "Center"}
+    ev = evaluate_title_only(llm, PROFILE, job, AI)
+    assert len(llm.calls) == 1 and llm.calls[0]["model"] == "sonnet"
+    assert "AI Solutions & Adoption Specialist" in llm.calls[0]["user_text"]
+    assert ev.decision == "alert" and ev.score == 100              # clamped to 0-100
+    assert ev.models["mode"] == TITLE_ONLY_MODE and ev.reason_he
+    refused = evaluate_title_only(FakeLLM("refused"), PROFILE, job, AI)
+    assert refused.score is None and refused.models["mode"] == TITLE_ONLY_MODE

@@ -3,7 +3,8 @@
 Email jobs differ from company-board jobs:
 - only the area exclusion of the location filter (the alerts are already set to Israel, and
   Jobify writes city names in Hebrew, so the "is it in Israel" check is skipped),
-- no AI evaluation (the emails have no description), they are alerted as-is,
+- no description: the AI step looks the job up on the company's board (jobalert/enrich.py)
+  and, if it isn't there, scores it from the title only,
 - never closed (there is no listing to compare against),
 - still deduplicated: the same job from a company board and from an email is alerted once.
 """

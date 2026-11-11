@@ -143,9 +143,16 @@ ai:
 
 email:
   # Job-alert emails read from Gmail over IMAP (read-only). Needs GMAIL_ADDRESS + GMAIL_APP_PASSWORD.
-  # These jobs have no description, so they skip the AI and the location filter, and are sent as-is
-  # (still never twice, and never if the same job was already sent from a company board).
+  # Emails have no description. Each email job is looked up on the company's own board
+  # (Greenhouse / Ashby / Lever, or its companies.yaml board); if the same title is found there,
+  # it gets the normal AI evaluation. Otherwise it gets an estimated score from the title only.
+  # Either way min_score_to_alert applies. Still never sent twice, and never if the same job was
+  # already sent from a company board.
   enabled: true
+  score_with_ai: true                # false = send email jobs as-is, without a score
+  board_lookup:
+    max_new_companies_per_run: 15    # companies probed for a board per run (the rest wait)
+    recheck_days: 14                 # a company with no board found is probed again after this
   lookback_days: 3                   # each run looks at emails from the last N days it hasn't read yet
   sources:
     - key: gmail_linkedin            # stored as jobs.source; never change after the first run

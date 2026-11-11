@@ -46,9 +46,12 @@ Check Gmail access: `uv run python -m jobalert.tools.gmail_check`.
 - Gmail is read over IMAP with an app password, **read-only** (mailbox opened with EXAMINE, bodies
   fetched with BODY.PEEK: nothing is marked read, moved or deleted). Sources are in `settings.yaml` → `email`.
 - Parsers: `jobalert/gmail/parsers.py` (LinkedIn text part; Jobify HTML, weekly and legacy layouts).
-- Emails have no job description, so these jobs skip the AI and the location filter and are sent as-is,
-  marked "📬 ממייל של LinkedIn". They still go through cross-source dedup, so a job already sent from a
-  company board isn't sent again (and vice versa).
+- Emails have no job description. Each email job is looked up on the company's own board
+  (`jobalert/enrich.py`): its companies.yaml board if we track it, otherwise Greenhouse / Ashby / Lever
+  probed by name, cached per company in `source_state` (`board:<company>`). If the same title is open
+  there (in the alert area), the job gets the normal AI evaluation. Otherwise it gets a score estimated from
+  the title only, shown as "ציון משוער". `min_score_to_alert` applies to both. Email jobs still go through
+  cross-source dedup, so a job already sent from a company board is not sent again.
 - Each email is recorded in `processed_emails` once its jobs are saved. An email the parser can't read
   is not recorded, so it is retried every run, and a Telegram warning is sent after 3 failing runs.
 - The first run baselines what is already in the inbox (no alerts).

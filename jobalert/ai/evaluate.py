@@ -16,7 +16,7 @@ from typing import Any
 
 from .llm import LLM, LLMResult
 from .profile import Profile
-from .prompts import FILTER_INSTRUCTIONS, SCORE_INSTRUCTIONS
+from .prompts import FILTER_INSTRUCTIONS, SCORE_INSTRUCTIONS, TITLE_ONLY_INSTRUCTIONS
 
 log = logging.getLogger(__name__)
 
@@ -115,6 +115,15 @@ SCORE_SCHEMA: dict[str, Any] = {
 }
 
 
+TITLE_ONLY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {"score": {"type": "integer"}, "reason_he": {"type": "string"}},
+    "required": ["score", "reason_he"],
+    "additionalProperties": False,
+}
+TITLE_ONLY_MODE = "title_only"
+
+
 # ------------------------------------------------------------------ gap rules (pure)
 
 def apply_gap_rules(
@@ -210,3 +219,27 @@ def evaluate_job(llm: LLM, profile: Profile, job: dict[str, Any], ai_cfg: dict[s
     score, rubric = total_score(scored.data)
     return Evaluation(decision.decision, None, decision.requirements, decision.gaps,
                       score, rubric, (scored.data.get("reason_he") or "").strip() or None, models)
+
+
+def evaluate_title_only(llm: LLM, profile: Profile, job: dict[str, Any], ai_cfg: dict[str, Any]) -> Evaluation:
+    """Estimate the fit of a job that has no description (email jobs not found on a board).
+
+    One scoring call, no requirement analysis and no gap rules. models["mode"] marks the
+    evaluation as an estimate, so the alert can say so.
+    """
+    text = (f"<job>\nCompany: {job.get('company')}\nTitle: {job.get('title')}\n"
+            f"Location: {job.get('location') or 'n/a'}\n</job>")
+    result: LLMResult = llm.structured(
+        model=ai_cfg["score_model"],
+        system_blocks=[TITLE_ONLY_INSTRUCTIONS, profile.prompt_block()],
+        user_text=text,
+        schema=TITLE_ONLY_SCHEMA,
+        effort=ai_cfg.get("title_only_effort", "low"),
+        use_fallback=True,
+    )
+    models: dict[str, Any] = {"mode": TITLE_ONLY_MODE, "score": {"model": result.model, **result.usage}}
+    if result.data is None:
+        return Evaluation("alert", None, [], [], None, None, UNPARSED_NOTE_HE, models)
+    score = max(0, min(int(result.data.get("score") or 0), 100))
+    return Evaluation("alert", None, [], [], score, None,
+                      (result.data.get("reason_he") or "").strip() or None, models)

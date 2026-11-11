@@ -48,3 +48,15 @@ def test_tailor_button_is_off_by_default():
         tg.send_alert(_content())
         assert sent[-1] == expected
         tg.close()
+
+
+def test_estimated_score_from_email_job_is_labelled():
+    from jobalert.notify.telegram import AlertContent, format_alert
+    text = format_alert(AlertContent(job_id=1, company="abra", title="Analyst", location="Center",
+                                     workplace_type=None, url="https://x", score=62, estimated=True,
+                                     reason_he="מתאים", email_source="LinkedIn"))
+    assert "ציון משוער: 62/100" in text and "לפי הכותרת בלבד" in text
+    assert "ממייל של LinkedIn" in text
+    full = format_alert(AlertContent(job_id=1, company="abra", title="Analyst", location="Center",
+                                     workplace_type=None, url="https://x", score=62, email_source="LinkedIn"))
+    assert "⭐ ציון: 62/100" in full and "משוער" not in full
