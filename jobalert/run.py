@@ -14,13 +14,14 @@ import sys
 import time
 from typing import Any
 
-from .ai.evaluate import evaluate_job
+from .ai.evaluate import TITLE_ONLY_MODE, evaluate_job, evaluate_title_only
 from .ai.llm import LLM, TransientAIError
 from .ai.profile import load_db_profile
 from .collectors.registry import get_collector_class
 from .config import CompanyConfig, Settings, load_companies, load_settings, require_env
 from .db import Database
-from .dedup import fingerprint
+from .dedup import build_alias_map, fingerprint
+from .enrich import BoardFinder
 from .gmail.collect import PARSERS, collect_emails
 from .gmail.imap import GmailReader
 from .http import PoliteClient
@@ -179,14 +180,34 @@ def collect_company(
             "baseline": first_time}
 
 
-def evaluate_pending(db: Database, tg: TelegramClient, settings: Settings) -> dict[str, Any]:
-    """Run the AI filter + score on new jobs. Rejected or low-score jobs are marked skipped."""
+def unscored_sources(settings: Settings) -> list[str]:
+    """Sources whose jobs skip the AI. Email jobs are scored unless email.score_with_ai is false."""
+    if settings.email.get("score_with_ai", True):
+        return []
+    return list(settings.email_sources)
+
+
+def evaluate_pending(
+    db: Database, tg: TelegramClient, settings: Settings,
+    http: PoliteClient | None = None, companies: list[CompanyConfig] | None = None,
+) -> dict[str, Any]:
+    """Run the AI filter + score on new jobs. Rejected or low-score jobs are marked skipped.
+
+    Email jobs have no description: we look for the same job on the company's own board and
+    score it normally if found, otherwise we estimate the score from the title alone.
+    """
     ai = settings.ai
-    stats = {"evaluated": 0, "rejected": 0, "below_min_score": 0, "duplicates": 0, "waiting": 0}
-    email_sources = list(settings.email_sources)   # no description in emails: never evaluated
-    rows = db.jobs_to_evaluate("pending", ai["max_evaluations_per_run"], email_sources)
+    stats = {"evaluated": 0, "rejected": 0, "below_min_score": 0, "duplicates": 0, "waiting": 0,
+             "email_from_board": 0, "email_title_only": 0}
+    skip_sources = unscored_sources(settings)
+    rows = db.jobs_to_evaluate("pending", ai["max_evaluations_per_run"], skip_sources)
     if not rows:
         return stats
+    email_sources = set(settings.email_sources)
+    finder = None
+    if http is not None and companies is not None and any(r["source"] in email_sources for r in rows):
+        finder = BoardFinder(db, http, companies, build_alias_map(companies),
+                             LocationFilter(settings.location), settings.email.get("board_lookup") or {})
     try:
         profile = load_db_profile(db)
         llm = LLM(require_env("ANTHROPIC_API_KEY"))
@@ -195,7 +216,18 @@ def evaluate_pending(db: Database, tg: TelegramClient, settings: Settings) -> di
                 db.set_notify_status(row["id"], "skipped")
                 stats["duplicates"] += 1
                 continue
-            ev = evaluate_job(llm, profile, row, ai)
+            if row["source"] in email_sources and not row.get("description"):
+                found = finder.find(row) if finder else None
+                if found:
+                    db.set_description(row["id"], found.description, found.board_url)
+                    row = {**row, "description": found.description}
+                    stats["email_from_board"] += 1
+                    ev = evaluate_job(llm, profile, row, ai)
+                else:
+                    stats["email_title_only"] += 1
+                    ev = evaluate_title_only(llm, profile, row, ai)
+            else:
+                ev = evaluate_job(llm, profile, row, ai)
             new_status = None
             if ev.decision == "reject":
                 new_status = "skipped"
@@ -205,8 +237,9 @@ def evaluate_pending(db: Database, tg: TelegramClient, settings: Settings) -> di
                 stats["below_min_score"] += 1
             db.save_evaluation(row["id"], ev, new_status)
             stats["evaluated"] += 1
-            log.info("AI: %s / %s -> %s %s", row["company"], row["title"], ev.decision,
-                     ev.score if ev.score is not None else ev.reject_reason or "")
+            log.info("AI: %s / %s -> %s %s%s", row["company"], row["title"], ev.decision,
+                     ev.score if ev.score is not None else ev.reject_reason or "",
+                     " (title only)" if ev.models.get("mode") == TITLE_ONLY_MODE else "")
     except TransientAIError as exc:
         # Temporary API trouble: the remaining jobs stay pending and are retried next run.
         log.warning("AI temporarily unavailable: %s", exc)
@@ -221,17 +254,17 @@ def evaluate_pending(db: Database, tg: TelegramClient, settings: Settings) -> di
                             f"<code>{html.escape(stats['error'])}</code>")
     else:
         db.record_source_success("ai:evaluate", stats["evaluated"], {})
-    stats["waiting"] = db.count_to_evaluate("pending", email_sources)
+    stats["waiting"] = db.count_to_evaluate("pending", skip_sources)
     return stats
 
 
 def send_pending_alerts(
     db: Database, tg: TelegramClient, limit: int, require_evaluation: bool,
-    email_sources: dict[str, str] | None = None,
+    email_sources: dict[str, str] | None = None, no_ai_sources: list[str] | None = None,
 ) -> int:
     email_sources = email_sources or {}
     sent = 0
-    for row in db.pending_alerts(limit, require_evaluation, list(email_sources)):
+    for row in db.pending_alerts(limit, require_evaluation, no_ai_sources or []):
         borderline = row.get("decision") == "borderline"
         alert_id = db.claim_alert(row["id"], row["source"], row["fingerprint"], borderline)
         if alert_id is None:
@@ -242,6 +275,7 @@ def send_pending_alerts(
             location=row["location"], workplace_type=row["workplace_type"], url=row["url"],
             score=row.get("score"), borderline=borderline, borderline_gaps=row.get("gaps_he"),
             reason_he=row.get("reason_he"), email_source=email_sources.get(row["source"]),
+            estimated=row.get("eval_mode") == TITLE_ONLY_MODE,
         )
         try:
             message_id, text = tg.send_alert(content)
@@ -312,13 +346,14 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
             send_samples(db, tg, sample_alerts)
         ai_on = bool(settings.ai.get("enabled"))
         if ai_on:
-            stats["_ai"] = evaluate_pending(db, tg, settings)
+            stats["_ai"] = evaluate_pending(db, tg, settings, http, load_companies())
         sent = 0
         if tg.quiet:
             log.info("Quiet hours: alerts stay pending until the morning")
         else:
             sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"], require_evaluation=ai_on,
-                                       email_sources=settings.email_sources)
+                                       email_sources=settings.email_sources,
+                                       no_ai_sources=unscored_sources(settings))
         waiting = db.pending_count()
         stats["_alerts"] = {"sent": sent, "still_pending": waiting}
         stats["_seconds"] = round(time.monotonic() - started, 1)

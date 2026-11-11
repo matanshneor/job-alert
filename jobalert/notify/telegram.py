@@ -31,7 +31,8 @@ class AlertContent:
     borderline_gaps: str | None = None   # Hebrew, e.g. "חסרות 2 שנות ניסיון ב-SQL"
     reason_he: str | None = None
     is_test: bool = False
-    email_source: str | None = None      # e.g. "LinkedIn" for jobs from alert emails (no AI score)
+    email_source: str | None = None      # e.g. "LinkedIn" for jobs from alert emails
+    estimated: bool = False              # score from the title only (no description was found)
 
 
 def format_alert(a: AlertContent) -> str:
@@ -42,7 +43,9 @@ def format_alert(a: AlertContent) -> str:
     lines = []
     if a.is_test:
         lines.append("🧪 <i>הודעת בדיקה</i>")
-    if a.score is not None:
+    if a.score is not None and a.estimated:
+        score_line = f"⭐ ציון משוער: {a.score}/100 (לפי הכותרת בלבד)"
+    elif a.score is not None:
         score_line = f"⭐ ציון: {a.score}/100"
     elif a.email_source:
         score_line = f"📬 ממייל של {e(a.email_source)} · בלי ציון AI"
@@ -54,6 +57,8 @@ def format_alert(a: AlertContent) -> str:
         f"📍 {e(location)}",
         score_line,
     ]
+    if a.email_source and a.score is not None:
+        lines.append(f"📬 ממייל של {e(a.email_source)}")
     if a.borderline:
         gaps = f": {e(a.borderline_gaps)}" if a.borderline_gaps else ""
         lines.append(f"⚠️ <b>Borderline</b>{gaps}")

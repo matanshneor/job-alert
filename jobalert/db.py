@@ -169,7 +169,7 @@ class Database:
             """
             select j.id, j.source, j.company, j.title, j.location, j.url, j.fingerprint,
                    j.raw->>'workplace_type' as workplace_type,
-                   e.score, e.decision, e.reason_he, e.gaps_he
+                   e.score, e.decision, e.reason_he, e.gaps_he, e.models->>'mode' as eval_mode
             from jobs j left join evaluations e on e.job_id = j.id
             where j.notify_status = 'pending' and j.status = 'open'
               and (not %s or e.id is not null or j.source = any(%s))
@@ -237,6 +237,13 @@ class Database:
         """Sending failed: drop the reservation so the next run retries."""
         self.conn.execute("delete from alerts where id = %s", (alert_id,))
 
+    def set_description(self, job_id: int, description: str, found_at: str) -> None:
+        """An email job whose description was found on the company's board."""
+        self.conn.execute(
+            "update jobs set description = %s, raw = raw || %s where id = %s",
+            (description, Jsonb({"description_from": found_at}), job_id),
+        )
+
     def set_notify_status(self, job_id: int, status: str) -> None:
         self.conn.execute("update jobs set notify_status = %s where id = %s", (status, job_id))
 
@@ -249,7 +256,8 @@ class Database:
         exclude_sources: sources that are never evaluated (email alerts)."""
         return self.conn.execute(
             """
-            select j.id, j.source, j.company, j.title, j.location, j.description, j.fingerprint
+            select j.id, j.source, j.company, j.company_slug, j.title, j.location, j.description,
+                   j.fingerprint
             from jobs j left join evaluations e on e.job_id = j.id
             where j.notify_status = %s and j.status = 'open' and e.id is null
               and not (j.source = any(%s))
