@@ -40,6 +40,7 @@ companies:
     name: ZIM
     aliases: [zim, zim integrated shipping services, zim integrated shipping]
     ats: comeet
+    enabled: false               # all its jobs are in Haifa, outside location.exclude_keywords
     params:
       comeet_slug: zim           # https://www.comeet.com/jobs/zim/72.008
       company_uid: "72.008"
