@@ -70,8 +70,11 @@ def tailor_keyboard(job_id: int) -> dict[str, Any]:
 
 class TelegramClient:
     def __init__(self, token: str, chat_id: str, delay_seconds: float = 1.1,
-                 tailor_button: bool = False) -> None:
+                 tailor_button: bool = False, quiet: bool = False) -> None:
         self._token = token
+        # Quiet hours: send_message keeps the text in self.held instead of sending it.
+        self.quiet = quiet
+        self.held: list[str] = []
         self._chat_id = chat_id
         self._delay = delay_seconds
         self._tailor_button = tailor_button
@@ -102,6 +105,10 @@ class TelegramClient:
         raise RuntimeError(f"Telegram {method} failed after retries")
 
     def send_message(self, text: str, reply_markup: dict[str, Any] | None = None) -> int:
+        if self.quiet:
+            self.held.append(text)
+            log.info("Quiet hours: message held for the morning")
+            return 0
         payload: dict[str, Any] = {
             "chat_id": self._chat_id,
             "text": text,

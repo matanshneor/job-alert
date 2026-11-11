@@ -287,6 +287,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "tzdata" },
 ]
 
 [package.dev-dependencies]
@@ -303,6 +304,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.14.3" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "tzdata", specifier = ">=2026.6" },
 ]
 
 [package.metadata.requires-dev]

@@ -26,6 +26,7 @@ from .gmail.imap import GmailReader
 from .http import PoliteClient
 from .location import LocationFilter
 from .notify.telegram import AlertContent, TelegramClient
+from .quiet import is_quiet, load_held, save_held
 
 log = logging.getLogger("jobalert")
 
@@ -274,18 +275,32 @@ def baseline_summary(stats: dict[str, Any], companies: list[CompanyConfig]) -> s
     )
 
 
+def send_held_messages(db: Database, tg: TelegramClient) -> None:
+    """Send the messages held during quiet hours, then clear them."""
+    held = load_held(db)
+    if not held:
+        return
+    tg.send_message(f"🌙 <b>{len(held)} הודעות מהלילה:</b>")
+    for text in held:
+        tg.send_message(text)
+    save_held(db, [])
+
+
 def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: int,
              include_email: bool = True) -> int:
     db = Database(require_env("DATABASE_URL"))
     tg = TelegramClient(require_env("TELEGRAM_BOT_TOKEN"), require_env("TELEGRAM_CHAT_ID"),
                         settings.alerts["telegram_delay_seconds"],
-                        tailor_button=bool(settings.alerts.get("tailor_button", False)))
+                        tailor_button=bool(settings.alerts.get("tailor_button", False)),
+                        quiet=is_quiet(settings.alerts.get("quiet_hours")))
     http = make_http(settings)
     loc = LocationFilter(settings.location)
     run_id = db.start_run()
     started = time.monotonic()
     stats: dict[str, Any] = {}
     try:
+        if not tg.quiet:
+            send_held_messages(db, tg)
         for company in companies:
             stats[company.source_key] = collect_company(company, db, http, loc, tg, settings)
         if include_email:
@@ -293,13 +308,17 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
         summary = baseline_summary(stats, companies)
         if summary:
             tg.send_message(summary)
-        if sample_alerts:
+        if sample_alerts and not tg.quiet:
             send_samples(db, tg, sample_alerts)
         ai_on = bool(settings.ai.get("enabled"))
         if ai_on:
             stats["_ai"] = evaluate_pending(db, tg, settings)
-        sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"], require_evaluation=ai_on,
-                                   email_sources=settings.email_sources)
+        sent = 0
+        if tg.quiet:
+            log.info("Quiet hours: alerts stay pending until the morning")
+        else:
+            sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"], require_evaluation=ai_on,
+                                       email_sources=settings.email_sources)
         waiting = db.pending_count()
         stats["_alerts"] = {"sent": sent, "still_pending": waiting}
         stats["_seconds"] = round(time.monotonic() - started, 1)
@@ -311,6 +330,11 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
         db.finish_run(run_id, stats, f"{type(exc).__name__}: {exc}"[:1000])
         return 1
     finally:
+        if tg.held:
+            try:
+                save_held(db, load_held(db) + tg.held)
+            except Exception:  # noqa: BLE001 - never hide the run's own error
+                log.exception("Could not save %d held messages", len(tg.held))
         http.close()
         tg.close()
         db.close()
