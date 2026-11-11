@@ -119,7 +119,12 @@ location:
 alerts:
   max_per_run: 25             # extra pending alerts wait for the next run (nothing is lost)
   telegram_delay_seconds: 1.1 # Telegram allows about 1 message per second per chat
-  tailor_button: false        # "התאם קו״ח" button under alerts; turn on when phase 5 (CV tailoring) is built
+  tailor_button: false
+  quiet_hours:                # no Telegram messages in this window; alerts and warnings wait for the morning
+    enabled: true
+    start: "00:00"
+    end: "09:00"
+    timezone: Asia/Jerusalem        # "התאם קו״ח" button under alerts; turn on when phase 5 (CV tailoring) is built
 
 closing:
   missed_runs_to_close: 2     # a job must be missing in 2 successful runs in a row
@@ -134,7 +139,7 @@ ai:
   score_effort: medium
   max_evaluations_per_run: 40        # the rest wait for the next run
   max_description_chars: 60000       # safety cap; real postings are far shorter
-  min_score_to_alert: 40             # jobs that pass the gap rules but score below this are not sent (0 = send all)
+  min_score_to_alert: 50             # jobs that pass the gap rules but score below this are not sent (0 = send all)
 
 email:
   # Job-alert emails read from Gmail over IMAP (read-only). Needs GMAIL_ADDRESS + GMAIL_APP_PASSWORD.
