@@ -169,10 +169,14 @@ def collect_company(
     if collector.complete_listing:
         closed = db.mark_missing(collector.ats, company.slug, [j.job_key for j in kept],
                                  closing["missed_runs_to_close"])
-        if settings.alerts.get("mark_closed"):
-            for c in closed:
-                if c["telegram_message_id"]:
-                    tg.mark_closed(c["telegram_message_id"], c["message_text"] or "")
+        on_close = settings.alerts.get("on_close", "delete")
+        for c in closed:
+            if not c["telegram_message_id"]:
+                continue
+            if on_close == "delete":
+                tg.delete_message(c["telegram_message_id"])
+            elif on_close == "mark":
+                tg.mark_closed(c["telegram_message_id"], c["message_text"] or "")
 
     db.record_source_success(key, len(kept), meta)
     log.info("%s: fetched %d, kept %d, new %d, closed %d%s", key, len(jobs), len(kept), new,
@@ -213,7 +217,7 @@ def evaluate_pending(
         profile = load_db_profile(db)
         llm = LLM(require_env("ANTHROPIC_API_KEY"))
         for row in rows:
-            if db.is_duplicate(row["fingerprint"], row["id"]):
+            if db.is_cross_source_duplicate(row["fingerprint"], row["source"]):
                 db.set_notify_status(row["id"], "skipped")
                 stats["duplicates"] += 1
                 continue

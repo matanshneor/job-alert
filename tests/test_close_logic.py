@@ -66,7 +66,7 @@ class FakeDb:
 
 class FakeTelegram:
     def __init__(self):
-        self.messages, self.closed = [], []
+        self.messages, self.closed, self.deleted = [], [], []
 
     def send_message(self, text, reply_markup=None):
         self.messages.append(text)
@@ -74,6 +74,9 @@ class FakeTelegram:
 
     def mark_closed(self, message_id, text):
         self.closed.append(message_id)
+
+    def delete_message(self, message_id):
+        self.deleted.append(message_id)
 
 
 def setup(monkeypatch):
@@ -97,7 +100,7 @@ def test_first_run_is_baseline_then_new_jobs_are_pending(monkeypatch, settings):
     assert db.jobs["fake:acme:3"]["notify"] == "pending"
 
 
-def test_job_closes_after_two_missed_runs_without_editing_alert(monkeypatch, settings):
+def test_job_closes_after_two_missed_runs_and_alert_is_deleted(monkeypatch, settings):
     db, tg = setup(monkeypatch)
     run_once(db, tg, settings, ["1", "2"])
     db.alerts["fake:acme:2"] = 555
@@ -105,17 +108,17 @@ def test_job_closes_after_two_missed_runs_without_editing_alert(monkeypatch, set
     assert db.jobs["fake:acme:2"]["status"] == "open"          # one miss is not enough
     run_once(db, tg, settings, ["1"])
     assert db.jobs["fake:acme:2"]["status"] == "closed"
-    assert tg.closed == []                                     # mark_closed is off by default
+    assert tg.deleted == [555] and tg.closed == []              # on_close defaults to delete
 
 
-def test_closed_job_alert_is_edited_when_mark_closed_is_on(monkeypatch, settings):
-    monkeypatch.setitem(settings.alerts, "mark_closed", True)
+def test_closed_job_alert_is_edited_when_on_close_is_mark(monkeypatch, settings):
+    monkeypatch.setitem(settings.alerts, "on_close", "mark")
     db, tg = setup(monkeypatch)
     run_once(db, tg, settings, ["1", "2"])
     db.alerts["fake:acme:2"] = 555
     run_once(db, tg, settings, ["1"])
     run_once(db, tg, settings, ["1"])
-    assert tg.closed == [555]
+    assert tg.closed == [555] and tg.deleted == []
 
 
 def test_job_that_reappears_resets_its_miss_count(monkeypatch, settings):

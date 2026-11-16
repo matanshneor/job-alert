@@ -9,10 +9,6 @@ from psycopg.types.json import Jsonb
 
 from .models import Job
 
-# The same job (same fingerprint) is not alerted twice within this many days, even when it
-# reappears under a new id (another source, or the company reposted it).
-DUPLICATE_WINDOW_DAYS = 30
-
 
 class Database:
     def __init__(self, url: str) -> None:
@@ -202,20 +198,17 @@ class Database:
         """Reserve the right to alert on this job, before sending.
 
         Returns the alert id, or None if this job was already alerted, or the same job
-        (same fingerprint) was alerted recently under another job id: from a different source,
-        or reposted by the company with a new id. In that case the
+        (same fingerprint) was already alerted from a different source. In that case the
         job is marked so it is not retried. Runs are never concurrent (cron every 4 hours),
         so check-then-insert is safe here.
         """
         with self.conn.transaction():
             dup = self.conn.execute(
                 """
-                select 1 from alerts a
-                where a.fingerprint = %s and a.job_id <> %s
-                  and coalesce(a.sent_at, now()) > now() - make_interval(days => %s)
-                limit 1
+                select 1 from alerts a join jobs j on j.id = a.job_id
+                where a.fingerprint = %s and j.source <> %s limit 1
                 """,
-                (fingerprint, job_id, DUPLICATE_WINDOW_DAYS),
+                (fingerprint, source),
             ).fetchone()
             if dup:
                 self.set_notify_status(job_id, "skipped")
@@ -283,17 +276,14 @@ class Database:
             (notify_status, list(exclude_sources or [])),
         ).fetchone()["n"]
 
-    def is_duplicate(self, fingerprint: str, job_id: int) -> bool:
-        """The same job (same fingerprint) was alerted recently under another job id: from a
-        different source, or reposted by the company with a new id. No need to spend AI on it."""
+    def is_cross_source_duplicate(self, fingerprint: str, source: str) -> bool:
+        """Already alerted from a different source (so there's no need to spend AI on it)."""
         return self.conn.execute(
             """
-            select 1 from alerts a
-            where a.fingerprint = %s and a.job_id <> %s
-              and coalesce(a.sent_at, now()) > now() - make_interval(days => %s)
-            limit 1
+            select 1 from alerts a join jobs j on j.id = a.job_id
+            where a.fingerprint = %s and j.source <> %s limit 1
             """,
-            (fingerprint, job_id, DUPLICATE_WINDOW_DAYS),
+            (fingerprint, source),
         ).fetchone() is not None
 
     def save_evaluation(self, job_id: int, ev: Any, new_notify_status: str | None) -> None:
