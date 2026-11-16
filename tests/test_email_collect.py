@@ -4,6 +4,7 @@ from jobalert.dedup import fingerprint
 from jobalert.gmail.collect import collect_emails, to_job
 from jobalert.gmail.imap import MailMessage
 from jobalert.gmail.parsers import EmailJob
+from tests.conftest import load_fixture
 
 COMPANIES = [CompanyConfig("mobileye", "Mobileye", "lever", {}, aliases=("mobileye",))]
 SRC = {"key": "gmail_linkedin", "name": "LinkedIn", "query": "from:x", "parser": "linkedin"}
@@ -63,6 +64,10 @@ class FakeDb:
 
     def mark_emails_processed(self, rows):
         self.processed.update(r[0] for r in rows)
+
+    def company_titles(self, sources, days):
+        return {fp.rsplit("|", 1)[0] for k, v in self.jobs.items() if v["job"].source in sources
+                for fp in [v["fp"]]}
 
     def upsert_jobs(self, rows, status):
         new = 0
@@ -137,3 +142,29 @@ def test_jobify_ids_come_from_fingerprint():
     a, _ = to_job("gmail_jobify", EmailJob(None, "Data Analyst", "G-Stat", "רחובות", "https://j/n/A"), {})
     b, _ = to_job("gmail_jobify", EmailJob(None, "Data Analyst", "G-Stat", "רחובות", "https://j/n/B"), {})
     assert a.job_key == b.job_key        # same job in two weekly emails, different short links
+
+
+def test_alljobs_digest_skips_jobs_already_stored_from_new_jobs_email(settings):
+    new_src = {"key": "gmail_alljobs", "name": "AllJobs", "query": "q1", "parser": "alljobs",
+               "same_jobs_as": ["gmail_alljobs_digest"]}
+    digest_src = {"key": "gmail_alljobs_digest", "name": "AllJobs", "query": "q2", "parser": "alljobs_digest",
+                  "same_jobs_as": ["gmail_alljobs"]}
+    html_new = load_fixture("alljobs_new.html")
+    html_digest = load_fixture("alljobs_digest.html")
+
+    class Reader(FakeReader):
+        def search(self, q):
+            return ["n"] if q.startswith("q1") else ["d"]
+
+    reader = Reader({
+        "n": MailMessage("gn", "alljobs@alljob.co.il", "new", None, "", html_new, b""),
+        "d": MailMessage("gd", "alljobs@alljobs-alert.co.il", "digest", None, "", html_digest, b""),
+    })
+    s = settings.__class__(**{**settings.__dict__,
+                              "email": {"enabled": True, "lookback_days": 3, "sources": [new_src, digest_src]}})
+    db = FakeDb()
+    stats = collect_emails(db, FakeTg(), s, COMPANIES, reader_factory=lambda: reader)
+    assert stats["gmail_alljobs"]["new"] == 3
+    # "research infra engineer" (hidden company) came in both emails: stored once.
+    assert stats["gmail_alljobs_digest"]["same_as_sibling"] == 1
+    assert stats["gmail_alljobs_digest"]["new"] == 4

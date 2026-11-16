@@ -1,4 +1,4 @@
-"""Phase 3: read job-alert emails (LinkedIn, Jobify) and store their jobs.
+"""Phase 3: read job-alert emails (LinkedIn, Jobify, AllJobs) and store their jobs.
 
 Email jobs differ from company-board jobs:
 - only the area exclusion of the location filter (the alerts are already set to Israel, and
@@ -7,6 +7,9 @@ Email jobs differ from company-board jobs:
   and, if it isn't there, scores it from the title only,
 - never closed (there is no listing to compare against),
 - still deduplicated: the same job from a company board and from an email is alerted once.
+  Sources listed in a source's `same_jobs_as` (AllJobs "new jobs" emails and the AllJobs digest)
+  write the same job with a different location (city vs. region), so there a job is matched by
+  company + title only, and a job already stored from a sibling source is not stored again.
 """
 from __future__ import annotations
 
@@ -21,7 +24,9 @@ from ..location import LocationFilter
 from ..models import Job
 from ..text import html_to_text
 from .imap import GmailReader, MailMessage
-from .parsers import EmailJob, ParseError, parse_jobify, parse_linkedin
+from .parsers import (
+    EmailJob, ParseError, parse_alljobs, parse_alljobs_digest, parse_jobify, parse_linkedin,
+)
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +35,11 @@ LOGIN_KEY = "gmail"   # source_state key for login / connection health
 PARSERS: dict[str, Callable[[MailMessage], list[EmailJob]]] = {
     "linkedin": lambda m: parse_linkedin(m.text or html_to_text(m.html)),
     "jobify": lambda m: parse_jobify(m.html),
+    "alljobs": lambda m: parse_alljobs(m.html),
+    "alljobs_digest": lambda m: parse_alljobs_digest(m.html),
 }
+
+SIBLING_DAYS = 30   # how far back `same_jobs_as` looks for the same company + title
 
 
 class Reader(Protocol):
@@ -55,6 +64,11 @@ def to_job(source_key: str, ej: EmailJob, alias_map: dict[str, str]) -> tuple[Jo
         raw={"from_email": True, **ej.extra},
     )
     return job, fp
+
+
+def company_title(fp: str) -> str:
+    """'acme|data analyst|tel aviv' -> 'acme|data analyst' (the fingerprint without the city)."""
+    return fp.rsplit("|", 1)[0]
 
 
 def _warn_on_threshold(
@@ -104,12 +118,21 @@ def collect_email_source(
         rows.extend((j, fp) for j, fp in jobs if not loc.excluded(j))
         processed.append((gmail_id, key, msg.subject[:300], msg.received_at, len(found)))
 
+    siblings = src.get("same_jobs_as") or []
+    sibling_dups = 0
+    if siblings and rows:
+        known = db.company_titles(siblings, SIBLING_DAYS)
+        kept = [(j, fp) for j, fp in rows if company_title(fp) not in known]
+        sibling_dups, rows = len(rows) - len(kept), kept
+
     new = db.upsert_jobs(rows, "baseline" if first_time else "pending")
     db.mark_emails_processed(processed)   # only after the jobs are saved
     meta["baselined"] = True
 
     stats: dict[str, Any] = {"name": name, "emails": len(processed), "jobs": len(rows), "new": new,
                              "baseline": first_time}
+    if sibling_dups:
+        stats["same_as_sibling"] = sibling_dups
     if unreadable:
         # Unreadable emails aren't marked processed, so every run retries them and the failure
         # count keeps growing until the parser is fixed (or they leave the look-back window).

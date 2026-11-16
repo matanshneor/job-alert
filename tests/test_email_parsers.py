@@ -1,9 +1,11 @@
-"""Email parsers on real (sanitized) LinkedIn and Jobify alert emails."""
+"""Email parsers on real (sanitized) LinkedIn, Jobify and AllJobs alert emails."""
 from datetime import datetime
 
 import pytest
 
-from jobalert.gmail.parsers import ParseError, parse_jobify, parse_linkedin
+from jobalert.gmail.parsers import (
+    ANONYMOUS_COMPANY, ParseError, parse_alljobs, parse_alljobs_digest, parse_jobify, parse_linkedin,
+)
 from tests.conftest import load_fixture
 
 
@@ -75,3 +77,35 @@ def test_jobify_broken_layout_raises():
     with pytest.raises(ParseError):
         parse_jobify(html)
     assert parse_jobify("<p>מיליון הגשות. וואו.</p>") == []
+
+
+def test_alljobs_new_jobs_email():
+    jobs = parse_alljobs(load_fixture("alljobs_new.html"))
+    assert [j.external_id for j in jobs] == ["8899393", "8900246", "8900506"]
+    hot = jobs[0]                                   # "משרה חמה!" badge is not the title
+    assert (hot.title, hot.company) == ("מהנדס /ת נתונים בכיר /ה", "לוגיקה IT")
+    assert hot.location == "תל אביב יפו, גבעתיים, פתח תקווה ורמת גן"
+    assert hot.url == "https://www.alljobs.co.il/Search/UploadSingle.aspx?JobID=8899393"
+    assert hot.extra == {"job_type": "משרה מלאה, עבודה היברידית"}
+    hidden = jobs[1]                                # a sector instead of the company's name
+    assert (hidden.title, hidden.company, hidden.location) == (
+        "data platform tech lead", ANONYMOUS_COMPANY, "תל אביב יפו")
+    assert hidden.extra["alljobs_sector"] == "הייטק / חומרה / תוכנה / סייבר"
+    assert jobs[2].company == ANONYMOUS_COMPANY     # "כללי"
+
+
+def test_alljobs_digest():
+    jobs = parse_alljobs_digest(load_fixture("alljobs_digest.html"))
+    assert [j.title for j in jobs] == [
+        "data Engineer", "data Engineer", "research infra engineer", "staff engineer - data platform",
+        "דרוש /ה ראש /ת צוות מהנדס /ת נתונים לארגון ממשלתי ברמת גן"]
+    assert all(j.external_id is None and j.company == ANONYMOUS_COMPANY for j in jobs)
+    assert [j.location for j in jobs] == ["מרכז", None, "מרכז", "מרכז", "מרכז"]   # "מספר אזורים" -> None
+    assert jobs[0].url.startswith("https://trailer.web-view.net/")
+
+
+def test_alljobs_non_alert_email_and_broken_layout():
+    assert parse_alljobs("<p>שלום</p>") == []
+    assert parse_alljobs_digest("<p>שלום</p>") == []
+    with pytest.raises(ParseError):
+        parse_alljobs('<a href="https://www.alljobs.co.il/x?JobID=1_2">לצפייה במשרה</a>')

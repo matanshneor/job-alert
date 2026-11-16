@@ -352,6 +352,18 @@ class Database:
         ).fetchall()
         return {r["gmail_id"] for r in rows}
 
+    def company_titles(self, sources: list[str], days: int) -> set[str]:
+        """'company|title' (the fingerprint without the city) of jobs first seen in these
+        sources in the last `days` days."""
+        rows = self.conn.execute(
+            """
+            select distinct split_part(fingerprint, '|', 1) || '|' || split_part(fingerprint, '|', 2) as ct
+            from jobs where source = any(%s) and first_seen_at > now() - make_interval(days => %s)
+            """,
+            (sources, days),
+        ).fetchall()
+        return {r["ct"] for r in rows}
+
     def mark_emails_processed(self, rows: list[tuple[str, str, str, Any, int]]) -> None:
         """rows: (gmail_id, source, subject, received_at, jobs_found)."""
         if not rows:

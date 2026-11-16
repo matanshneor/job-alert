@@ -46,7 +46,11 @@ Check Gmail access: `uv run python -m jobalert.tools.gmail_check`.
 
 - Gmail is read over IMAP with an app password, **read-only** (mailbox opened with EXAMINE, bodies
   fetched with BODY.PEEK: nothing is marked read, moved or deleted). Sources are in `settings.yaml` → `email`.
-- Parsers: `jobalert/gmail/parsers.py` (LinkedIn text part; Jobify HTML, weekly and legacy layouts).
+- Parsers: `jobalert/gmail/parsers.py` (LinkedIn text part; Jobify HTML, weekly and legacy layouts; AllJobs HTML,
+  the "new jobs" email and the daily digest).
+- AllJobs: companies that hide their name show a sector instead; those jobs are stored as "חברה חסויה".
+  The two AllJobs emails write the location differently (city vs. region), so a job already stored from
+  one of them (same company + title, `same_jobs_as` in `settings.yaml`) is not stored again from the other.
 - Emails have no job description. Each email job is looked up on the company's own board
   (`jobalert/enrich.py`): its companies.yaml board if we track it, otherwise Greenhouse / Ashby / Lever
   probed by name, cached per company in `source_state` (`board:<company>`). If the same title is open

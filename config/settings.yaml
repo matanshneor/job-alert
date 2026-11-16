@@ -165,3 +165,15 @@ email:
       name: Jobify
       query: "from:info@jobify360.co.il"
       parser: jobify
+    # AllJobs sends two kinds of email. A job already stored from one of them (same company + title)
+    # is not stored again from the other: they write the location differently (city vs. region).
+    - key: gmail_alljobs
+      name: AllJobs
+      query: "from:alljobs@alljob.co.il"           # "<name>, עלו N משרות חדשות"; has job ids and cities
+      parser: alljobs
+      same_jobs_as: [gmail_alljobs_digest]
+    - key: gmail_alljobs_digest
+      name: AllJobs
+      query: "from:alljobs@alljobs-alert.co.il"    # daily digest; region only, no job id
+      parser: alljobs_digest
+      same_jobs_as: [gmail_alljobs]
