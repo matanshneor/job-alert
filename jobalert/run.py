@@ -25,6 +25,7 @@ from .enrich import BoardFinder
 from .gmail.collect import PARSERS, collect_emails
 from .gmail.imap import GmailReader
 from .http import PoliteClient
+from .job_page import fetch_description
 from .location import LocationFilter
 from .notify.telegram import AlertContent, TelegramClient
 from .quiet import is_quiet, load_held, save_held
@@ -198,12 +199,13 @@ def evaluate_pending(
 ) -> dict[str, Any]:
     """Run the AI filter + score on new jobs. Rejected or low-score jobs are marked skipped.
 
-    Email jobs have no description: we look for the same job on the company's own board and
-    score it normally if found, otherwise we estimate the score from the title alone.
+    Email jobs have no description: we read it from the job's page (the link in the email),
+    else look for the same job on the company's own board, and score it normally if found;
+    otherwise we estimate the score from the title alone.
     """
     ai = settings.ai
     stats = {"evaluated": 0, "rejected": 0, "below_min_score": 0, "duplicates": 0, "waiting": 0,
-             "email_from_board": 0, "email_title_only": 0}
+             "email_from_page": 0, "email_from_board": 0, "email_title_only": 0}
     skip_sources = unscored_sources(settings)
     rows = db.jobs_to_evaluate("pending", ai["max_evaluations_per_run"], skip_sources)
     if not rows:
@@ -222,8 +224,14 @@ def evaluate_pending(
                 stats["duplicates"] += 1
                 continue
             if row["source"] in email_sources and not row.get("description"):
-                found = finder.find(row) if finder else None
-                if found:
+                page_text = fetch_description(http, row["url"]) if http is not None else None
+                found = None if page_text else (finder.find(row) if finder else None)
+                if page_text:
+                    db.set_description(row["id"], page_text, row["url"])
+                    row = {**row, "description": page_text}
+                    stats["email_from_page"] += 1
+                    ev = evaluate_job(llm, profile, row, ai)
+                elif found:
                     db.set_description(row["id"], found.description, found.board_url)
                     row = {**row, "description": found.description}
                     stats["email_from_board"] += 1

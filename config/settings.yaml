@@ -145,7 +145,8 @@ ai:
 
 email:
   # Job-alert emails read from Gmail over IMAP (read-only). Needs GMAIL_ADDRESS + GMAIL_APP_PASSWORD.
-  # Emails have no description. Each email job is looked up on the company's own board
+  # Emails have no description. It is first read from the job's page (LinkedIn, Jobify links;
+  # jobalert/job_page.py). Otherwise the email job is looked up on the company's own board
   # (Greenhouse / Ashby / Lever, or its companies.yaml board); if the same title is found there,
   # it gets the normal AI evaluation. Otherwise it gets an estimated score from the title only.
   # Either way min_score_to_alert applies. Still never sent twice, and never if the same job was
