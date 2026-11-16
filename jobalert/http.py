@@ -10,7 +10,9 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-RETRY_STATUSES = {429, 500, 502, 503, 504}
+RETRY_STATUSES = {500, 502, 503, 504}
+# 429 (rate limited) is not retried within a run: retrying only extends the block.
+# The next scheduled run tries again.
 
 
 class PoliteClient:
@@ -50,7 +52,7 @@ class PoliteClient:
                 log.warning("Network error on %s (attempt %d): %s", host, attempt + 1, exc)
             else:
                 if response.status_code not in RETRY_STATUSES:
-                    # 4xx such as 403 are not retried: we respect blocks.
+                    # 4xx such as 403 and 429 are not retried: we respect blocks.
                     response.raise_for_status()
                     return response
                 last_error = httpx.HTTPStatusError(

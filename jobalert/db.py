@@ -199,7 +199,7 @@ class Database:
 
         Returns the alert id, or None if this job was already alerted, or the same job
         (same fingerprint) was already alerted from a different source. In that case the
-        job is marked so it is not retried. Runs are never concurrent (hourly cron),
+        job is marked so it is not retried. Runs are never concurrent (cron every 4 hours),
         so check-then-insert is safe here.
         """
         with self.conn.transaction():

@@ -1,4 +1,4 @@
-"""Hourly entrypoint.
+"""Entrypoint, run by cron every 4 hours.
 
     uv run python -m jobalert.run                 # normal run (what Railway's cron executes)
     uv run python -m jobalert.run --dry-run       # fetch + filter + print; no DB, no Telegram

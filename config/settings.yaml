@@ -1,8 +1,8 @@
 http:
-  user_agent: "personal-job-alert/1.0 (hourly check, low volume)"
+  user_agent: "personal-job-alert/1.0 (check every 4 hours, low volume)"
   min_delay_seconds: 1.5      # wait at least this long between requests to the same host
   timeout_seconds: 30
-  retries: 3                  # retried only on network errors, 429 and 5xx (never on 403)
+  retries: 3                  # retried only on network errors and 5xx (never on 403 or 429)
 
 location:
   # A job passes if any of its locations is in one of these countries...

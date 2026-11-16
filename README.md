@@ -1,6 +1,6 @@
 # job-alert
 
-Personal job-alert tool. Every hour it checks company career boards (through their ATS public APIs) and job-alert
+Personal job-alert tool. Every 4 hours it checks company career boards (through their ATS public APIs) and job-alert
 emails in Gmail (LinkedIn, Jobify), stores jobs in Postgres, and sends new relevant jobs to Telegram.
 
 ## Run locally
@@ -58,6 +58,6 @@ Check Gmail access: `uv run python -m jobalert.tools.gmail_check`.
 
 ## Deploy (Railway)
 
-Cron service, schedule `0 * * * *`, start command `python main.py`.
+Cron service, schedule `0 3,7,11,15,19,23 * * *` (UTC; every 4 hours, with a run at 09:00 Israel winter time when quiet hours end), start command `python main.py`.
 Variables: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `ANTHROPIC_API_KEY`,
 `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`.
