@@ -25,8 +25,10 @@ Check Gmail access: `uv run python -m jobalert.tools.gmail_check`.
 - `config/settings.yaml`: location filter (Israel + remote open to Israel), politeness delays, closing rules.
 - A source seen for the first time is **baselined**: its existing jobs are stored without alerts.
 - Each job has a stable `job_key` (`ats:company:external_id`) and a cross-source `fingerprint`.
-  A job is never alerted twice (`alerts.job_id` is unique), and the same job from a second source is skipped.
-- A job missing from 2 successful runs in a row is marked closed, and its Telegram alert is edited.
+  A job is never alerted twice (`alerts.job_id` is unique), and the same job (same fingerprint) under another
+  id is skipped for 30 days: from a second source, or reposted by the company with a new id.
+- A job missing from 2 successful runs in a row is marked closed (its Telegram alert is edited only if
+  `alerts.mark_closed` is on; it is off by default).
   A source that suddenly returns nothing never closes jobs, and a source failing 3 runs in a row sends a warning.
 
 | ATS | Collector | Companies |

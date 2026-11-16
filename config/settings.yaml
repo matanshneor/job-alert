@@ -120,6 +120,7 @@ alerts:
   max_per_run: 25             # extra pending alerts wait for the next run (nothing is lost)
   telegram_delay_seconds: 1.1 # Telegram allows about 1 message per second per chat
   tailor_button: false
+  mark_closed: false          # true = edit the alert to add "המשרה נסגרה" when a job closes
   quiet_hours:                # no Telegram messages in this window; alerts and warnings wait for the morning
     enabled: true
     start: "00:00"

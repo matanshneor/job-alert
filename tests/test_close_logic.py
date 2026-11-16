@@ -97,7 +97,7 @@ def test_first_run_is_baseline_then_new_jobs_are_pending(monkeypatch, settings):
     assert db.jobs["fake:acme:3"]["notify"] == "pending"
 
 
-def test_job_closes_after_two_missed_runs_and_alert_is_edited(monkeypatch, settings):
+def test_job_closes_after_two_missed_runs_without_editing_alert(monkeypatch, settings):
     db, tg = setup(monkeypatch)
     run_once(db, tg, settings, ["1", "2"])
     db.alerts["fake:acme:2"] = 555
@@ -105,6 +105,16 @@ def test_job_closes_after_two_missed_runs_and_alert_is_edited(monkeypatch, setti
     assert db.jobs["fake:acme:2"]["status"] == "open"          # one miss is not enough
     run_once(db, tg, settings, ["1"])
     assert db.jobs["fake:acme:2"]["status"] == "closed"
+    assert tg.closed == []                                     # mark_closed is off by default
+
+
+def test_closed_job_alert_is_edited_when_mark_closed_is_on(monkeypatch, settings):
+    monkeypatch.setitem(settings.alerts, "mark_closed", True)
+    db, tg = setup(monkeypatch)
+    run_once(db, tg, settings, ["1", "2"])
+    db.alerts["fake:acme:2"] = 555
+    run_once(db, tg, settings, ["1"])
+    run_once(db, tg, settings, ["1"])
     assert tg.closed == [555]
 
 
