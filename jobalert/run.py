@@ -14,6 +14,8 @@ import sys
 import time
 from typing import Any
 
+import httpx
+
 from .ai.evaluate import TITLE_ONLY_MODE, evaluate_job, evaluate_title_only
 from .ai.llm import LLM, TransientAIError
 from .ai.profile import load_db_profile
@@ -156,14 +158,12 @@ def collect_company(
             tg.send_message(f"⚠️ המקור <b>{html.escape(company.name)}</b> מחזיר 0 משרות כבר {failures} ריצות.")
         return {"fetched": len(jobs), "kept": 0, "warning": msg}
 
-    known = db.existing_keys(collector.ats, company.slug)
-    for job in kept:
-        if job.job_key not in known and not job.description:
-            collector.fetch_details(job)
+    deferred = fetch_new_details(collector, kept, db.existing_keys(collector.ats, company.slug), key)
 
     # A source seen for the first time is baselined: its existing jobs are stored without alerts.
     first_time = state.get("last_success_at") is None
-    rows = [(j, fingerprint(company.slug, j.title, j.location)) for j in kept]
+    rows = [(j, fingerprint(company.slug, j.title, j.location)) for j in kept
+            if j.job_key not in deferred]
     new = db.upsert_jobs(rows, "baseline" if first_time else "pending")
 
     closed = []
@@ -180,10 +180,40 @@ def collect_company(
                 tg.mark_closed(c["telegram_message_id"], c["message_text"] or "")
 
     db.record_source_success(key, len(kept), meta)
-    log.info("%s: fetched %d, kept %d, new %d, closed %d%s", key, len(jobs), len(kept), new,
-             len(closed), " (baseline)" if first_time else "")
-    return {"fetched": len(jobs), "kept": len(kept), "new": new, "closed": len(closed),
-            "baseline": first_time}
+    log.info("%s: fetched %d, kept %d, new %d, closed %d%s%s", key, len(jobs), len(kept), new,
+             len(closed), " (baseline)" if first_time else "",
+             f", {len(deferred)} deferred to next run" if deferred else "")
+    result = {"fetched": len(jobs), "kept": len(kept), "new": new, "closed": len(closed),
+              "baseline": first_time}
+    if deferred:
+        result["deferred"] = len(deferred)
+    return result
+
+
+def fetch_new_details(collector: Any, kept: list, known: set, key: str) -> set[str]:
+    """Fill in descriptions of new jobs. Returns the keys of jobs to leave for the next run.
+
+    A rate limit (429) stops detail requests for this source: the job is not stored yet, so the
+    next run sees it as new and tries again. Other errors keep the job without a description.
+    """
+    deferred: set[str] = set()
+    for job in kept:
+        if job.job_key in known or job.description:
+            continue
+        if deferred:  # rate limited earlier in this source: don't extend the block
+            deferred.add(job.job_key)
+            continue
+        try:
+            collector.fetch_details(job)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 429:
+                log.warning("%s: rate limited reading job details; new jobs wait for the next run", key)
+                deferred.add(job.job_key)
+            else:
+                log.warning("%s: could not read details of %s: %s", key, job.job_key, exc)
+        except Exception as exc:  # noqa: BLE001 - one job's details must not stop the source
+            log.warning("%s: could not read details of %s: %s", key, job.job_key, exc)
+    return deferred
 
 
 def unscored_sources(settings: Settings) -> list[str]:
@@ -349,7 +379,11 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
         if not tg.quiet:
             send_held_messages(db, tg)
         for company in companies:
-            stats[company.source_key] = collect_company(company, db, http, loc, tg, settings)
+            try:
+                stats[company.source_key] = collect_company(company, db, http, loc, tg, settings)
+            except Exception as exc:  # noqa: BLE001 - one broken source must not stop the run
+                log.exception("Source %s failed", company.source_key)
+                stats[company.source_key] = {"error": f"{type(exc).__name__}: {exc}"[:300]}
         if include_email:
             stats.update(collect_emails(db, tg, settings, load_companies()))
         summary = baseline_summary(stats, companies)

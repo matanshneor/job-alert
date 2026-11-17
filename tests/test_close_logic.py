@@ -1,4 +1,6 @@
 """Run-level logic of collect_company with an in-memory DB that mirrors the SQL semantics."""
+import httpx
+
 from jobalert.collectors import registry
 from jobalert.collectors.base import Collector
 from jobalert.config import CompanyConfig
@@ -12,6 +14,15 @@ class FakeCollector(Collector):
     ats = "fake"
     listing: list = []
     error: Exception | None = None
+    detail_errors: dict = {}      # external_id -> exception raised by fetch_details
+    detail_calls: list = []
+
+    def fetch_details(self, job):
+        FakeCollector.detail_calls.append(job.external_id)
+        if job.external_id in FakeCollector.detail_errors:
+            raise FakeCollector.detail_errors[job.external_id]
+        job.description = f"About job {job.external_id}"
+        return job
 
     def list_jobs(self):
         if FakeCollector.error:
@@ -82,6 +93,8 @@ class FakeTelegram:
 def setup(monkeypatch):
     monkeypatch.setitem(registry.COLLECTORS, "fake", FakeCollector)
     FakeCollector.error = None
+    FakeCollector.detail_errors = {}
+    FakeCollector.detail_calls = []
     return FakeDb(), FakeTelegram()
 
 
@@ -147,3 +160,31 @@ def test_failing_source_warns_once_after_three_failures(monkeypatch, settings):
         stats = run_once(db, tg, settings, [])
         assert "error" in stats
     assert len(tg.messages) == 1 and "נכשל 3 ריצות" in tg.messages[0]
+
+
+def http_error(status):
+    request = httpx.Request("GET", "https://acme/job")
+    return httpx.HTTPStatusError(f"HTTP {status}", request=request,
+                                 response=httpx.Response(status, request=request))
+
+
+def test_rate_limit_on_details_defers_new_jobs_to_next_run(monkeypatch, settings):
+    db, tg = setup(monkeypatch)
+    run_once(db, tg, settings, ["1"])
+    FakeCollector.detail_errors = {"2": http_error(429)}
+    FakeCollector.detail_calls = []
+    stats = run_once(db, tg, settings, ["1", "2", "3"])
+    assert FakeCollector.detail_calls == ["2"]                  # stopped asking after the 429
+    assert stats["new"] == 0 and stats["deferred"] == 2
+    assert set(db.jobs) == {"fake:acme:1"}
+    FakeCollector.detail_errors = {}
+    stats = run_once(db, tg, settings, ["1", "2", "3"])        # next run picks them up
+    assert stats["new"] == 2 and "deferred" not in stats
+
+
+def test_other_detail_error_keeps_the_job_without_description(monkeypatch, settings):
+    db, tg = setup(monkeypatch)
+    run_once(db, tg, settings, ["1"])
+    FakeCollector.detail_errors = {"2": http_error(404)}
+    stats = run_once(db, tg, settings, ["1", "2", "3"])
+    assert stats["new"] == 2 and "deferred" not in stats
