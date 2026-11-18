@@ -146,13 +146,15 @@ class TelegramClient:
             # Old or deleted messages can't be edited; the DB still marks the job closed.
             log.warning("Could not edit message %s: %s", message_id, exc)
 
-    def delete_message(self, message_id: int) -> None:
+    def delete_message(self, message_id: int) -> bool:
         """Delete the alert of a closed job. Telegram lets a bot delete only messages
-        newer than 48 hours; older ones are left as they are."""
+        newer than 48 hours; older ones are left as they are. Returns True if deleted."""
         try:
             self._call("deleteMessage", {"chat_id": self._chat_id, "message_id": message_id})
+            return True
         except RuntimeError as exc:
             log.info("Could not delete message %s (probably older than 48h): %s", message_id, exc)
+            return False
 
     def get_updates(self) -> list[dict[str, Any]]:
         return self._call("getUpdates", {"timeout": 0})

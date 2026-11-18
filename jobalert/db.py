@@ -237,6 +237,14 @@ class Database:
         """Sending failed: drop the reservation so the next run retries."""
         self.conn.execute("delete from alerts where id = %s", (alert_id,))
 
+    def forget_alert(self, job_id: int) -> None:
+        """The alert of a closed job was deleted from Telegram. Drop its record and make the job
+        pending again: alerts go only to open jobs, so it is sent again only if it reopens
+        (with its existing evaluation, no new AI call)."""
+        with self.conn.transaction():
+            self.conn.execute("delete from alerts where job_id = %s", (job_id,))
+            self.set_notify_status(job_id, "pending")
+
     def set_description(self, job_id: int, description: str, found_at: str) -> None:
         """An email job whose description was found on the company's board."""
         self.conn.execute(

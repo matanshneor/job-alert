@@ -175,7 +175,9 @@ def collect_company(
             if not c["telegram_message_id"]:
                 continue
             if on_close == "delete":
-                tg.delete_message(c["telegram_message_id"])
+                if tg.delete_message(c["telegram_message_id"]):
+                    # The alert is gone from the chat: if the job reopens, send it again.
+                    db.forget_alert(c["job_id"])
             elif on_close == "mark":
                 tg.mark_closed(c["telegram_message_id"], c["message_text"] or "")
 

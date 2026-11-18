@@ -74,10 +74,15 @@ class FakeDb:
                                    "message_text": "alert text"})
         return closed
 
+    def forget_alert(self, job_key):
+        del self.alerts[job_key]
+        self.jobs[job_key]["notify"] = "pending"
+
 
 class FakeTelegram:
     def __init__(self):
         self.messages, self.closed, self.deleted = [], [], []
+        self.undeletable: set = set()      # message ids older than 48h
 
     def send_message(self, text, reply_markup=None):
         self.messages.append(text)
@@ -87,7 +92,10 @@ class FakeTelegram:
         self.closed.append(message_id)
 
     def delete_message(self, message_id):
+        if message_id in self.undeletable:
+            return False
         self.deleted.append(message_id)
+        return True
 
 
 def setup(monkeypatch):
@@ -122,6 +130,31 @@ def test_job_closes_after_two_missed_runs_and_alert_is_deleted(monkeypatch, sett
     run_once(db, tg, settings, ["1"])
     assert db.jobs["fake:acme:2"]["status"] == "closed"
     assert tg.deleted == [555] and tg.closed == []              # on_close defaults to delete
+
+
+def test_reopened_job_is_sent_again_if_its_alert_was_deleted(monkeypatch, settings):
+    db, tg = setup(monkeypatch)
+    run_once(db, tg, settings, ["1", "2"])
+    db.jobs["fake:acme:2"]["notify"] = "sent"
+    db.alerts["fake:acme:2"] = 555
+    run_once(db, tg, settings, ["1"])
+    run_once(db, tg, settings, ["1"])                            # closed, alert deleted
+    assert tg.deleted == [555] and "fake:acme:2" not in db.alerts
+    run_once(db, tg, settings, ["1", "2"])                       # reopened with the same id
+    assert db.jobs["fake:acme:2"] == {"missed": 0, "status": "open", "notify": "pending"}
+
+
+def test_reopened_job_is_not_resent_if_its_old_alert_is_still_there(monkeypatch, settings):
+    db, tg = setup(monkeypatch)
+    run_once(db, tg, settings, ["1", "2"])
+    db.jobs["fake:acme:2"]["notify"] = "sent"
+    db.alerts["fake:acme:2"] = 555
+    tg.undeletable.add(555)                                      # older than 48h
+    run_once(db, tg, settings, ["1"])
+    run_once(db, tg, settings, ["1"])
+    run_once(db, tg, settings, ["1", "2"])
+    assert db.alerts["fake:acme:2"] == 555
+    assert db.jobs["fake:acme:2"]["notify"] == "sent"
 
 
 def test_closed_job_alert_is_edited_when_on_close_is_mark(monkeypatch, settings):
