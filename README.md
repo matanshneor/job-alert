@@ -28,6 +28,7 @@ Check Gmail access: `uv run python -m jobalert.tools.gmail_check`.
   A job is never alerted twice (`alerts.job_id` is unique), and the same job from a second source is skipped.
 - A job missing from 2 successful runs in a row is marked closed, and its Telegram alert is deleted
   (`alerts.on_close`; Telegram lets a bot delete only messages newer than 48 hours, older ones stay).
+  If the alert was deleted and the job reopens under the same id, it is sent again (with its existing AI score).
   A source that suddenly returns nothing never closes jobs, and a source failing 3 runs in a row sends a warning.
 
 | ATS | Collector | Companies |
