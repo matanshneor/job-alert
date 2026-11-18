@@ -257,7 +257,7 @@ class Database:
         return self.conn.execute(
             """
             select j.id, j.source, j.company, j.company_slug, j.title, j.location, j.description,
-                   j.fingerprint
+                   j.fingerprint, j.url
             from jobs j left join evaluations e on e.job_id = j.id
             where j.notify_status = %s and j.status = 'open' and e.id is null
               and not (j.source = any(%s))
