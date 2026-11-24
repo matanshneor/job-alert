@@ -109,7 +109,8 @@ class TelegramClient:
             raise RuntimeError(f"Telegram {method} failed: {data.get('description')}")
         raise RuntimeError(f"Telegram {method} failed after retries")
 
-    def send_message(self, text: str, reply_markup: dict[str, Any] | None = None) -> int:
+    def send_message(self, text: str, reply_markup: dict[str, Any] | None = None,
+                     silent: bool = False) -> int:
         if self.quiet:
             self.held.append(text)
             log.info("Quiet hours: message held for the morning")
@@ -122,12 +123,15 @@ class TelegramClient:
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
+        if silent:
+            payload["disable_notification"] = True   # arrives without a sound or a phone ping
         return self._call("sendMessage", payload)["message_id"]
 
-    def send_alert(self, content: AlertContent) -> tuple[int, str]:
+    def send_alert(self, content: AlertContent, silent: bool = False) -> tuple[int, str]:
         text = format_alert(content)
         keyboard = tailor_keyboard(content.job_id) if self._tailor_button else None
-        message_id = self.send_message(text, keyboard)
+        message_id = (self.send_message(text, keyboard, silent=True) if silent
+                      else self.send_message(text, keyboard))
         return message_id, text
 
     def mark_closed(self, message_id: int, original_text: str) -> None:

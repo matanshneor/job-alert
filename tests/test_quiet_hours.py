@@ -69,3 +69,70 @@ def test_quiet_client_holds_messages_and_morning_run_sends_them():
 
     send_held_messages(db, morning)                          # nothing held: sends nothing
     assert len(morning.sent) == 4
+
+
+# --- delivery times (summary at set times, never on Shabbat) ---
+from jobalert.delivery import in_shabbat, load_last_delivery, save_last_delivery, should_deliver  # noqa: E402
+
+DELIVERY = {"enabled": True, "times": ["09:00", "17:00"], "timezone": "Asia/Jerusalem",
+            "shabbat": {"enabled": True, "start": "fri 15:00", "end": "sat 20:30"}}
+
+
+def test_delivers_once_per_delivery_time():
+    # Wed 2026-11-25, Israel = UTC+2
+    assert not should_deliver(DELIVERY, utc(2026, 11, 25, 7, 0), utc(2026, 11, 25, 11, 0))   # 13:00, sent at 09:00
+    assert should_deliver(DELIVERY, utc(2026, 11, 25, 7, 0), utc(2026, 11, 25, 15, 0))       # 17:00 run
+    assert not should_deliver(DELIVERY, utc(2026, 11, 25, 15, 0), utc(2026, 11, 25, 19, 0))  # 21:00
+    assert not should_deliver(DELIVERY, utc(2026, 11, 25, 15, 0), utc(2026, 11, 25, 23, 0))  # 01:00
+    assert not should_deliver(DELIVERY, utc(2026, 11, 25, 15, 0), utc(2026, 11, 26, 3, 0))   # 05:00
+    assert should_deliver(DELIVERY, utc(2026, 11, 25, 15, 0), utc(2026, 11, 26, 7, 0))       # 09:00 next day
+    assert not should_deliver(DELIVERY, None, utc(2026, 11, 25, 23, 0))                     # first run: wait for next time
+
+
+def test_summer_time_runs_an_hour_later_still_deliver():
+    # July: Israel = UTC+3, the 07:00 UTC run is at 10:00
+    assert should_deliver(DELIVERY, utc(2026, 7, 1, 15, 0), utc(2026, 7, 2, 7, 0))
+
+
+def test_shabbat_holds_until_saturday_night():
+    last = utc(2026, 11, 27, 7, 0)                                                  # Fri 09:00 summary
+    assert in_shabbat(DELIVERY, utc(2026, 11, 27, 15, 0).astimezone(__import__("zoneinfo").ZoneInfo("Asia/Jerusalem")))
+    assert not should_deliver(DELIVERY, last, utc(2026, 11, 27, 15, 0))           # Fri 17:00
+    assert not should_deliver(DELIVERY, last, utc(2026, 11, 28, 7, 0))            # Sat 09:00
+    assert not should_deliver(DELIVERY, last, utc(2026, 11, 28, 15, 0))           # Sat 17:00
+    assert should_deliver(DELIVERY, last, utc(2026, 11, 28, 19, 0))               # Sat 21:00
+    assert not should_deliver(DELIVERY, utc(2026, 11, 28, 19, 0), utc(2026, 11, 29, 3, 0))  # Sun 05:00
+
+
+def test_disabled_delivery_sends_every_run():
+    assert should_deliver({**DELIVERY, "enabled": False}, utc(2026, 11, 25, 11, 0), utc(2026, 11, 25, 11, 5))
+    assert should_deliver(None, None, utc(2026, 11, 28, 9, 0))
+
+
+def test_last_delivery_round_trip():
+    db = FakeDb()
+    assert load_last_delivery(db) is None
+    save_last_delivery(db, utc(2026, 11, 25, 7, 0))
+    assert load_last_delivery(db) == utc(2026, 11, 25, 7, 0)
+
+
+def test_digest_header_then_silent_alerts():
+    from jobalert.run import send_pending_alerts
+
+    class Db:
+        def pending_alerts(self, limit, require_evaluation, no_ai):
+            return [{"id": i, "source": "lever", "company": "Mobileye", "title": f"Job {i}", "location": "Ramat Gan",
+                     "url": "https://x", "fingerprint": f"f{i}", "workplace_type": None, "score": 70,
+                     "decision": "alert", "reason_he": None, "gaps_he": None, "eval_mode": None} for i in (1, 2)]
+        def claim_alert(self, *a): return 1
+        def complete_alert(self, *a): pass
+
+    class Tg(RecordingTelegram):
+        def _call(self, method, payload):
+            self.sent.append((payload["text"], payload.get("disable_notification", False)))
+            return {"message_id": len(self.sent)}
+
+    tg = Tg(quiet=False)
+    assert send_pending_alerts(Db(), tg, 40, True, digest=True) == 2
+    assert "2" in tg.sent[0][0] and tg.sent[0][1] is False
+    assert [silent for _, silent in tg.sent[1:]] == [True, True]

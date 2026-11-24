@@ -117,16 +117,22 @@ location:
     - "=דרום"
 
 alerts:
-  max_per_run: 25             # extra pending alerts wait for the next run (nothing is lost)
+  max_per_run: 40             # per summary; extra pending alerts wait for the next summary (nothing is lost)
   telegram_delay_seconds: 1.1 # Telegram allows about 1 message per second per chat
   tailor_button: false
   on_close: delete            # when a job closes: delete its alert (Telegram allows only <48h old),
                               # "mark" = add "המשרה נסגרה", "none" = leave it
-  quiet_hours:                # no Telegram messages in this window; alerts and warnings wait for the morning
+  # Telegram messages go out only as a summary at these times (Israel time), never on Shabbat.
+  # Runs still check every 4 hours; new alerts and warnings wait for the next summary.
+  # A summary is sent by the first run at or after each time (with DST the 09:00 run may be at 10:00).
+  delivery:
     enabled: true
-    start: "00:00"
-    end: "09:00"
-    timezone: Asia/Jerusalem        # "התאם קו״ח" button under alerts; turn on when phase 5 (CV tailoring) is built
+    times: ["09:00", "17:00"]
+    timezone: Asia/Jerusalem
+    shabbat:                  # nothing is sent in this window; the summary waits for Saturday night
+      enabled: true
+      start: "fri 15:00"
+      end: "sat 20:30"        # fixed time that is after Shabbat ends all year in Jerusalem
 
 closing:
   missed_runs_to_close: 2     # a job must be missing in 2 successful runs in a row

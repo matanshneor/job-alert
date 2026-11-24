@@ -30,7 +30,8 @@ from .http import PoliteClient
 from .job_page import fetch_description
 from .location import LocationFilter
 from .notify.telegram import AlertContent, TelegramClient
-from .quiet import is_quiet, load_held, save_held
+from .delivery import load_last_delivery, save_last_delivery, should_deliver
+from .quiet import load_held, save_held
 
 log = logging.getLogger("jobalert")
 
@@ -306,10 +307,15 @@ def evaluate_pending(
 def send_pending_alerts(
     db: Database, tg: TelegramClient, limit: int, require_evaluation: bool,
     email_sources: dict[str, str] | None = None, no_ai_sources: list[str] | None = None,
+    digest: bool = False,
 ) -> int:
     email_sources = email_sources or {}
     sent = 0
-    for row in db.pending_alerts(limit, require_evaluation, no_ai_sources or []):
+    rows = db.pending_alerts(limit, require_evaluation, no_ai_sources or [])
+    if rows and digest:
+        # One message with a sound; the alerts under it arrive silently.
+        tg.send_message(f"📋 <b>סיכום משרות: {len(rows)} משרות חדשות</b>")
+    for row in rows:
         borderline = row.get("decision") == "borderline"
         alert_id = db.claim_alert(row["id"], row["source"], row["fingerprint"], borderline)
         if alert_id is None:
@@ -323,7 +329,7 @@ def send_pending_alerts(
             estimated=row.get("eval_mode") == TITLE_ONLY_MODE,
         )
         try:
-            message_id, text = tg.send_alert(content)
+            message_id, text = tg.send_alert(content, silent=digest)
         except Exception:  # noqa: BLE001
             log.exception("Telegram send failed for job %s; will retry next run", row["id"])
             db.release_alert(alert_id)
@@ -359,7 +365,7 @@ def send_held_messages(db: Database, tg: TelegramClient) -> None:
     held = load_held(db)
     if not held:
         return
-    tg.send_message(f"🌙 <b>{len(held)} הודעות מהלילה:</b>")
+    tg.send_message(f"📨 <b>{len(held)} הודעות מערכת מאז הסיכום הקודם:</b>")
     for text in held:
         tg.send_message(text)
     save_held(db, [])
@@ -368,10 +374,15 @@ def send_held_messages(db: Database, tg: TelegramClient) -> None:
 def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: int,
              include_email: bool = True) -> int:
     db = Database(require_env("DATABASE_URL"))
+    delivery_cfg = settings.alerts.get("delivery")
+    last_delivery = load_last_delivery(db)
+    if last_delivery is None and delivery_cfg and delivery_cfg.get("enabled", True):
+        save_last_delivery(db)   # first run with delivery times: the next summary is at the next set time
+    deliver = should_deliver(delivery_cfg, last_delivery)
     tg = TelegramClient(require_env("TELEGRAM_BOT_TOKEN"), require_env("TELEGRAM_CHAT_ID"),
                         settings.alerts["telegram_delay_seconds"],
                         tailor_button=bool(settings.alerts.get("tailor_button", False)),
-                        quiet=is_quiet(settings.alerts.get("quiet_hours")))
+                        quiet=not deliver)
     http = make_http(settings)
     loc = LocationFilter(settings.location)
     run_id = db.start_run()
@@ -398,11 +409,13 @@ def real_run(companies: list[CompanyConfig], settings: Settings, sample_alerts: 
             stats["_ai"] = evaluate_pending(db, tg, settings, http, load_companies())
         sent = 0
         if tg.quiet:
-            log.info("Quiet hours: alerts stay pending until the morning")
+            log.info("Not a delivery time: alerts stay pending until the next summary")
         else:
             sent = send_pending_alerts(db, tg, settings.alerts["max_per_run"], require_evaluation=ai_on,
                                        email_sources=settings.email_sources,
-                                       no_ai_sources=unscored_sources(settings))
+                                       no_ai_sources=unscored_sources(settings),
+                                       digest=bool(delivery_cfg and delivery_cfg.get("enabled", True)))
+            save_last_delivery(db)
         waiting = db.pending_count()
         stats["_alerts"] = {"sent": sent, "still_pending": waiting}
         stats["_seconds"] = round(time.monotonic() - started, 1)
