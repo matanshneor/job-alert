@@ -39,6 +39,18 @@ def in_shabbat(cfg: dict[str, Any], local: datetime) -> bool:
     return now >= start or now < end
 
 
+def in_night(cfg: dict[str, Any], local: datetime) -> bool:
+    """No summary at night, even if one is due (e.g. the batch held over Shabbat)."""
+    window = cfg.get("night")
+    if not window:
+        return False
+    start, end = _hm(window["start"]), _hm(window["end"])
+    now = (local.hour, local.minute)
+    if start <= end:
+        return start <= now < end
+    return now >= start or now < end
+
+
 def latest_slot(cfg: dict[str, Any], local: datetime) -> datetime:
     """The most recent delivery time at or before `local`."""
     times = sorted(_hm(t) for t in cfg["times"])
@@ -58,7 +70,7 @@ def should_deliver(cfg: dict[str, Any] | None, last_delivery: datetime | None,
         return True
     now = now or datetime.now(timezone.utc)
     local = now.astimezone(ZoneInfo(cfg.get("timezone", "Asia/Jerusalem")))
-    if in_shabbat(cfg, local):
+    if in_shabbat(cfg, local) or in_night(cfg, local):
         return False
     if last_delivery is None:
         return False   # first run with delivery times: start counting from now (no 1 a.m. summary)

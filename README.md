@@ -67,12 +67,12 @@ Check Gmail access: `uv run python -m jobalert.tools.gmail_check`.
 ### Delivery times
 
 Runs check every 4 hours, but Telegram messages go out only as a summary at the times in
-`settings.yaml` → `alerts.delivery` (09:00 and 17:00 Israel time), and never on Shabbat (Friday 15:00 to
-Saturday 20:30; that batch goes out on Saturday night). A summary is one header message with a sound,
+`settings.yaml` → `alerts.delivery` (10:00, 15:00 and 20:00 Israel time), and never on Shabbat (Friday 16:30 to
+Saturday 19:55, no summaries at night; that batch goes out on Saturday night). A summary is one header message with a sound,
 followed by the job alerts sent silently. Warnings found between summaries are held and sent with the next one.
 
 ## Deploy (Railway)
 
-Cron service, schedule `0 3,7,11,15,19,23 * * *` (UTC; every 4 hours, with a run at 09:00 Israel winter time when quiet hours end), start command `python main.py`.
+Cron service, schedule `0 3,8,13,18,23 * * *` (UTC; 05:00, 10:00, 15:00, 20:00, 01:00 Israel winter time, so each summary time has a run), start command `python main.py`.
 Variables: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `ANTHROPIC_API_KEY`,
 `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`.

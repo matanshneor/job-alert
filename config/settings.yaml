@@ -124,15 +124,16 @@ alerts:
                               # "mark" = add "המשרה נסגרה", "none" = leave it
   # Telegram messages go out only as a summary at these times (Israel time), never on Shabbat.
   # Runs still check every 4 hours; new alerts and warnings wait for the next summary.
-  # A summary is sent by the first run at or after each time (with DST the 09:00 run may be at 10:00).
+  # A summary is sent by the first run at or after each time (runs are at 10:00, 15:00, 20:00 Israel winter time; an hour later in summer).
   delivery:
     enabled: true
-    times: ["09:00", "17:00"]
+    times: ["10:00", "15:00", "20:00"]
     timezone: Asia/Jerusalem
+    night: {start: "22:00", end: "09:00"}   # never send at night, even a summary that is due
     shabbat:                  # nothing is sent in this window; the summary waits for Saturday night
       enabled: true
-      start: "fri 15:00"
-      end: "sat 20:30"        # fixed time that is after Shabbat ends all year in Jerusalem
+      start: "fri 16:30"      # after the Friday 15:00 summary (16:00 in summer); no run falls in 16:00-16:30
+      end: "sat 19:55"        # the Saturday 20:00 run (winter) sends; in summer the next run is 21:00
 
 closing:
   missed_runs_to_close: 2     # a job must be missing in 2 successful runs in a row

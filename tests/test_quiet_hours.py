@@ -76,6 +76,35 @@ from jobalert.delivery import in_shabbat, load_last_delivery, save_last_delivery
 
 DELIVERY = {"enabled": True, "times": ["09:00", "17:00"], "timezone": "Asia/Jerusalem",
             "shabbat": {"enabled": True, "start": "fri 15:00", "end": "sat 20:30"}}
+REAL = {"enabled": True, "times": ["10:00", "15:00", "20:00"], "timezone": "Asia/Jerusalem",
+        "night": {"start": "22:00", "end": "09:00"},
+        "shabbat": {"enabled": True, "start": "fri 16:30", "end": "sat 19:55"}}
+
+
+def test_real_schedule_three_summaries_and_friday_afternoon():
+    # runs 0 3,8,13,18,23 UTC = 05,10,15,20,01 Israel (winter)
+    sent = []
+    last = utc(2026, 11, 26, 18, 0)                       # Thu 20:00 summary
+    for h in [(27, 23), (28, 3), (28, 8), (28, 13), (28, 18), (28, 23)]:
+        pass
+    runs = [utc(2026, 11, 26, 23), utc(2026, 11, 27, 3), utc(2026, 11, 27, 8), utc(2026, 11, 27, 13),
+            utc(2026, 11, 27, 18), utc(2026, 11, 28, 8), utc(2026, 11, 28, 13), utc(2026, 11, 28, 18),
+            utc(2026, 11, 28, 23), utc(2026, 11, 29, 8)]
+    for now in runs:
+        if should_deliver(REAL, last, now):
+            sent.append(now)
+            last = now
+    # Fri 10:00 and 15:00, nothing on Shabbat, Saturday-night batch at 20:00, nothing at night
+    assert sent == [utc(2026, 11, 27, 8), utc(2026, 11, 27, 13), utc(2026, 11, 28, 18), utc(2026, 11, 29, 8)]
+
+
+def test_summer_saturday_night_and_no_night_summary():
+    # summer: runs at 06,11,16,21,02 Israel
+    last = utc(2026, 7, 3, 13)                                   # Fri 16:00 summary
+    assert not should_deliver(REAL, last, utc(2026, 7, 4, 13))   # Sat 16:00, Shabbat
+    assert should_deliver(REAL, last, utc(2026, 7, 4, 18))       # Sat 21:00
+    assert should_deliver(REAL, utc(2026, 7, 3, 8), utc(2026, 7, 3, 13))   # Fri 16:00 summer, before Shabbat
+    assert not should_deliver(REAL, utc(2026, 7, 2, 18), utc(2026, 7, 2, 23))  # 02:00, night
 
 
 def test_delivers_once_per_delivery_time():
