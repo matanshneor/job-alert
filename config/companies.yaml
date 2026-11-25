@@ -262,8 +262,17 @@ companies:
     params:
       board: orcasecurity      # https://boards-api.greenhouse.io/v1/boards/orcasecurity/jobs
 
+  # careers.checkpoint.com blocks automated requests, but its jobs are posted on SmartRecruiters
+  # (the site's apply links); the public API returns the same Israel list (40 jobs, Nov 2026).
+  - slug: checkpoint
+    name: Check Point
+    aliases: [check point, checkpoint, check point software, check point software technologies]
+    ats: smartrecruiters
+    params:
+      company_id: CheckPointSoftwareTechnologies2   # https://jobs.smartrecruiters.com/CheckPointSoftwareTechnologies2
+      country: il
+
 # Checked and NOT added (Nov 2026):
-#   Check Point  - own site (careers.checkpoint.com), blocks automated requests (403).
 #   Elbit        - own site, blocks automated requests (403).
 #   Bank Hapoalim, Bank Leumi - own sites, block automated requests.
 #   CyberArk     - acquired by Palo Alto Networks; its jobs come in through the 'paloalto' entry above.
